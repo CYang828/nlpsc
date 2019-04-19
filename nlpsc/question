@@ -1,0 +1,32 @@
+# python 本身的bug
+# _check_list = _manager.list()
+# https://bugs.python.org/issue30256会引起该问题
+# 解决https://stackoverflow.com/questions/46779860/multiprocessing-managers-and-custom-classes
+# self._check_list.append(task_wrapper)
+
+
+
+1 多进程共享变量时，需要使用内置的pickle进行dump和load，python2很多方法没有办法实现pickle，需要自己重写__setstate__和__getstate__
+2 在开始进行多进程创建时，要非常小心创建的时机。
+  默认创建时新的进程会克隆当前进程中的所有变量，如果这时候占用很大内存的变量则会使内存占用非常的大。
+  还有就是如果某个想要在进程间传递的对象还没有加载就进行了进程的创建，则会出现无法找到该属性的现象。
+3 在执行多进程操作的时候，可以通过进程的id判断当前所在进程是否为主进程，区分开做不同的操作
+#
+# if not fn.__name__.startswith(obj.__class__.__name__):
+#     real_fn_name = '_{}{}'.format(obj.__class__.__name__, fn.__name__)
+# else:
+#     real_fn_name = fn.__name__
+#
+# # 这里需要先判断是否存在该方法，如果调用getattr会被迫调用__getattr__出现循环问题
+# if hasattr(obj, real_fn_name):
+#     target = getattr(obj, real_fn_name)
+#     # 判断当前是否在子进程中运行
+#     if not ProcessPoolWrapper.in_main():
+#         return fn(obj, *args, **kwargs)
+#     else:
+#         _process_pool.apply_async(target=target)
+# else:
+#     print(obj, real_fn_name, 'function noexist')
+4 多装饰器的调用顺序和调用时机
+5 wraps方法
+6 JoinableQueue队列的使用

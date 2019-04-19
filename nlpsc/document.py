@@ -1,0 +1,250 @@
+# coding:utf-8
+
+import os
+from inspect import isfunction
+
+from .error import NLPSError
+from .util.tool import uniqueid
+from .tokenization import Tokenization
+from .core import callable_register
+from .preprocessing.data import literal_clean
+from .util.file import create_file, gen_filename
+
+
+def make_document(text, lang, name=None):
+    """将文本转换成文章对象"""
+    return Document(text, lang, name)
+
+
+def list2words(l):
+    """列表转换word对象列表"""
+    return [Word(i) for i in l]
+
+
+class Document(object):
+    """文章对象"""
+
+    support_langs = ('zh', 'en')
+    _tokenizer = Tokenization()
+    _stopwordict = []
+
+    def __init__(self, text, lang, name=None):
+        if lang not in self.support_langs:
+            print('langs {} can be supported now, please check it'.format(self.support_langs))
+            raise NLPSError
+
+        # 文档名称
+        self.name = name if name else uniqueid()
+        # 文档中保存的字面量
+        self.text = text.strip()
+        # 文档语言
+        self.lang = lang
+        # 调用方法栈
+        self._call_stack = []
+
+        # 处理后的中间文本结果
+        self._proceed = ''
+        # 段落
+        self.paragraphs = []
+        # 句子
+        self.sentences = []
+        # 词
+        self._words = []
+
+    def __str__(self):
+        if self._words:
+            show_thing = '\t' + ' | '.join(map(str, self._words[:10]))
+        else:
+            show_thing = self._proceed
+
+        return '<nlpsc.document.Document -> {} ({} ......) >'.format(self.name, show_thing[:100])
+
+    def __short__(self):
+        return '<nlpsc.document.Document -> {}>'.format(self.name)
+
+    @callable_register
+    def paragraph(self):
+        """文章段落切割"""
+        self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
+        return self
+
+    @callable_register
+    def sentence(self):
+        """文章句子切割，需要依赖于段落切割"""
+        pass
+
+    @callable_register
+    def word(self):
+        """文章词切割，需要依赖于句子和段落切割"""
+        pass
+
+    @callable_register
+    def paragraph(self):
+        """文章段落化"""
+        self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
+        return self
+
+    @callable_register
+    def clean(self):
+        """文档字面量清洗"""
+        self._proceed = literal_clean(self.text)
+        return self
+
+    @callable_register
+    def preprocess(self, fn):
+        """
+        数据预处理
+
+        :argument
+            fn: 预处理的自定义函数，自定函数需要返回预处理后的字面量结果
+        """
+
+        if isfunction(fn):
+            self._proceed = fn(self.text)
+            return self
+        else:
+            print("preprocess argument is a function, please check it!")
+            raise NLPSError
+
+    @callable_register
+    def tokenize(self, tokenizer=None, userdict=None):
+        """分词
+
+        :argument
+            tokenizer: 分词器，目前中文tokenizer支持jieba（默认）、pkuseg
+            userdict: 用户词典
+        """
+
+        self._tokenizer.configuration(tokenizer=tokenizer, userdict=userdict)
+        self._words = list2words(list(self._tokenizer.cut(self.text)))
+        return self
+
+    @callable_register
+    def stopword(self, stopwordict=None):
+        """停用词处理
+
+        :argument
+            停用词典路径
+        """
+
+        if not self._stopwordict:
+            self._load_stopwordict(stopwordict)
+
+        remain_words = []
+        for idx, word in enumerate(self._words):
+            if word.text and word.text not in self._stopwordict:
+                remain_words.append(word)
+        del self._words
+        self._words = remain_words
+
+    def _load_stopwordict(self, stopwordict):
+        """加载停用词典"""
+        stopwordict = stopwordict if stopwordict else os.path.join(os.path.dirname(__file__), 'default/stopwords.txt')
+        self._stopwordict = [line.strip() for line in open(stopwordict, 'r', encoding='utf-8').readlines()]
+
+    @callable_register
+    def literal(self, word_delimiter=' '):
+        if self._words:
+            literal_text = word_delimiter.join([word.text for word in self._words])
+        else:
+            literal_text = self._proceed
+        return literal_text
+
+    @callable_register
+    def dump(self, output_dir, is_structured=False, prefix="dump", suffix="nlpsc",
+             paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' '):
+        """将document对象dump到文件中
+
+        :argument
+            output_dir: dump的目录
+            is_structured: 是否进行结构化dump,结构化dump会调用结构化方法进行结构化
+            prefix: dump文件前缀
+            suffix: dump文件后缀
+            paragraph_delimiter: 段落分隔符
+            sentence_delimiter: 句子分隔符
+            word_delimiter: 词分隔符
+        """
+
+        if is_structured:
+            # 需要先进行结构化切割
+            pass
+        else:
+            # 指根据当前document被处理的情况进行dump
+            dump_text = self.literal(word_delimiter)
+            dump_filename = gen_filename(self.name, prefix=prefix, suffix=suffix)
+            dump_path = create_file(output_dir, dump_filename, dump_text)
+            print('{:60} dump to {}'.format(self.__short__(), dump_path))
+
+
+class Paragraph(object):
+    """段落对象"""
+
+    def __init__(self, text):
+        self.text = text
+        self._nlp = None
+        self.sentences = None
+
+    def __str__(self):
+        return '<Paragraph>'
+
+    def sentence(self):
+        """段落句子切割"""
+        pass
+
+    @property
+    def nlp(self):
+        return self._nlp
+
+    @nlp.setter
+    def nlp(self, v):
+        self._nlp = v
+        self.sentences = self._make_sentence()
+
+    def _make_sentence(self):
+        """生成句子"""
+        sentence = ''
+        sentences = []
+        words = []
+        for i, token in enumerate(self._nlp.tokens):
+            if token.text in ('.', '!', '?'):
+                sentence += token.text
+                sentences.append(Sentence(sentence, words, self._nlp.tokens))
+                sentence = ''
+                words = []
+            else:
+                sentence += token.text + ' '
+                words.append(token.text)
+
+        # 如果最后一句没有终止符号
+        if sentence:
+            sentences.append(Sentence(sentence, words, self._nlp.tokens))
+        return sentences
+
+
+class Sentence(object):
+    """句子对象
+
+    简单的语句切分方式为通过一些标点符号来进行，但是这样做会有局限性。
+    英文中有些时候'.'并不一定代表是句子的结束，中文中可能也存在这种情况"""
+
+    def __init__(self, text, words, tokens):
+        self.text = text.strip()
+        self.words = [Word(word, token) for word, token in zip(words, tokens)]
+
+    def __str__(self):
+        return '<Sentence>'
+
+
+class Word(object):
+    """单词对象"""
+
+    def __init__(self, text):
+        self.text = text.strip()
+
+    def __str__(self):
+        return '{}'.format(self.text)
+
+
+
+
+
