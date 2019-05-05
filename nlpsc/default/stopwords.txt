@@ -437,7 +437,7 @@ rather
 而况
 particularly
 ？
-..
+.
 借以
 来不及
 毋宁
@@ -1002,7 +1002,7 @@ during
 ～
 离
 hence
-”，
+，
 ［①ｈ］
 喏
 并无
@@ -1543,7 +1543,6 @@ regards
 上来
 actually
 同样
-，
 —
 又及
 豁然
@@ -2141,13 +2140,12 @@ greetings
 每每
 com
 遵循
-，也
+也
 over
 out
 暗自
 某个
 除此而外
-》），
 provides
 ＝″
 殆

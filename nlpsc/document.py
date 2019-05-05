@@ -3,12 +3,20 @@
 import os
 from inspect import isfunction
 
-from .error import NLPSError
+from .error import NLPSCError
 from .util.tool import uniqueid
 from .tokenization import Tokenization
-from .core import callable_register
+from .util.file import aio_read_file
 from .preprocessing.data import literal_clean
-from .util.file import create_file, gen_filename
+from .util.file import gen_filename, aio_write_file
+
+
+async def file2document(path, pattern, encoding, lang='zh'):
+    """文件转换程文档"""
+    path = os.path.abspath(path)
+    text = await aio_read_file(path, pattern, encoding)
+    document = Document(text, path=path, lang=lang)
+    return document
 
 
 def make_document(text, lang, name=None):
@@ -28,13 +36,16 @@ class Document(object):
     _tokenizer = Tokenization()
     _stopwordict = []
 
-    def __init__(self, text, lang, name=None):
+    def __init__(self, text, lang, path=None, name=None):
         if lang not in self.support_langs:
             print('langs {} can be supported now, please check it'.format(self.support_langs))
-            raise NLPSError
+            raise NLPSCError
 
+        self.id = uniqueid()
         # 文档名称
-        self.name = name if name else uniqueid()
+        self.name = name if name else self.id
+        # 文档路径
+        self.path = path
         # 文档中保存的字面量
         self.text = text.strip()
         # 文档语言
@@ -43,7 +54,7 @@ class Document(object):
         self._call_stack = []
 
         # 处理后的中间文本结果
-        self._proceed = ''
+        self.proceed = ''
         # 段落
         self.paragraphs = []
         # 句子
@@ -55,42 +66,36 @@ class Document(object):
         if self._words:
             show_thing = '\t' + ' | '.join(map(str, self._words[:10]))
         else:
-            show_thing = self._proceed
+            show_thing = self.proceed
 
         return '<nlpsc.document.Document -> {} ({} ......) >'.format(self.name, show_thing[:100])
 
     def __short__(self):
         return '<nlpsc.document.Document -> {}>'.format(self.name)
 
-    @callable_register
     def paragraph(self):
         """文章段落切割"""
         self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
         return self
 
-    @callable_register
     def sentence(self):
         """文章句子切割，需要依赖于段落切割"""
         pass
 
-    @callable_register
     def word(self):
         """文章词切割，需要依赖于句子和段落切割"""
         pass
 
-    @callable_register
     def paragraph(self):
         """文章段落化"""
         self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
         return self
 
-    @callable_register
     def clean(self):
         """文档字面量清洗"""
-        self._proceed = literal_clean(self.text)
+        self.proceed = literal_clean(self.text)
         return self
 
-    @callable_register
     def preprocess(self, fn):
         """
         数据预处理
@@ -100,13 +105,12 @@ class Document(object):
         """
 
         if isfunction(fn):
-            self._proceed = fn(self.text)
+            self.proceed = fn(self.text)
             return self
         else:
             print("preprocess argument is a function, please check it!")
-            raise NLPSError
+            raise NLPSCError
 
-    @callable_register
     def tokenize(self, tokenizer=None, userdict=None):
         """分词
 
@@ -115,11 +119,17 @@ class Document(object):
             userdict: 用户词典
         """
 
+        if userdict:
+            # 首先寻找default目录，是否存在该文件
+            guess_path = os.path.join(os.path.dirname(__file__), 'default/userdict/{}'.format(userdict))
+            if os.path.exists(guess_path):
+                userdict = guess_path
+            print('load tokenize userdict: {}'.format(userdict))
+
         self._tokenizer.configuration(tokenizer=tokenizer, userdict=userdict)
         self._words = list2words(list(self._tokenizer.cut(self.text)))
         return self
 
-    @callable_register
     def stopword(self, stopwordict=None):
         """停用词处理
 
@@ -140,19 +150,18 @@ class Document(object):
     def _load_stopwordict(self, stopwordict):
         """加载停用词典"""
         stopwordict = stopwordict if stopwordict else os.path.join(os.path.dirname(__file__), 'default/stopwords.txt')
+        print('load stopword: {}'.format(stopwordict))
         self._stopwordict = [line.strip() for line in open(stopwordict, 'r', encoding='utf-8').readlines()]
 
-    @callable_register
     def literal(self, word_delimiter=' '):
         if self._words:
             literal_text = word_delimiter.join([word.text for word in self._words])
         else:
-            literal_text = self._proceed
+            literal_text = self.proceed
         return literal_text
 
-    @callable_register
-    def dump(self, output_dir, is_structured=False, prefix="dump", suffix="nlpsc",
-             paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' '):
+    async def dump(self, output_dir, filename, is_structured=False, prefix="dump", suffix="nlpsc",
+                         paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' '):
         """将document对象dump到文件中
 
         :argument
@@ -171,8 +180,8 @@ class Document(object):
         else:
             # 指根据当前document被处理的情况进行dump
             dump_text = self.literal(word_delimiter)
-            dump_filename = gen_filename(self.name, prefix=prefix, suffix=suffix)
-            dump_path = create_file(output_dir, dump_filename, dump_text)
+            dump_text = '{}||{}\n'.format(self.path if self.path else '', dump_text)
+            dump_path = await aio_write_file(output_dir, filename, dump_text, pattern='a+')
             print('{:60} dump to {}'.format(self.__short__(), dump_path))
 
 

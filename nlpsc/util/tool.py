@@ -36,41 +36,6 @@ class timing(object):
         return '{total}{unit}'.format(total=self.total, unit=self.unit)
 
 
-class FuncBridge(object):
-
-    unique_obj_cache = {}
-
-    def __init__(self, calling, fn_name, fn_desc=None):
-        self._calling = calling
-        self._fn_name = fn_name
-        self._fn_args = ()
-        self._fn_kwargs = {}
-        self._fn_desc = fn_desc if fn_desc else '{} processing'.format(self._fn_name)
-        fn_return_type = getattr(self._calling, self._fn_name).__annotations__['return']
-        fn_return_type_name = fn_return_type.__class__.__name__
-
-        if fn_return_type_name not in self.unique_obj_cache.keys():
-            self._fn_return_obj = fn_return_type()
-            self.unique_obj_cache[fn_return_type_name] = self._fn_return_obj
-        else:
-            self._fn_return_obj = self.unique_obj_cache[fn_return_type_name]
-
-    def __call__(self, *args, **kwargs):
-        self._fn_args = args
-        self._fn_args = kwargs
-        return self._fn_return_obj
-
-    def __str__(self):
-        return '<FuncBridge {} {} {} {}>'.format(self._calling, self._fn_name, self._fn_args, self._fn_kwargs)
-
-    def call(self):
-        return getattr(self._calling, self._fn_name)(*self._fn_args, **self._fn_kwargs)
-
-    @property
-    def return_obj(self):
-        return self._fn_return_obj
-
-
 class IterFnBridge(object):
     def __init__(self, calling, fn_list, fn_desc):
         self._calling = calling

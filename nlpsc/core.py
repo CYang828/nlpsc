@@ -2,97 +2,120 @@
 
 import time
 import inspect
+import collections
 from queue import Empty
 from functools import wraps
 
-from .error import NLPSError
-from .util.tool import FuncBridge
-from .util.process import TaskWrapper
+from .error import NLPSCError
 from .util.thread import ThreadWrapper
-from .util.process import ProcessPoolWrapper, Manager
+from .util.process import ProcessPoolWrapper, Manager, ProcessTaskWrapper
+from .util.aio import AIOPoolWrapper, AIOTaskWrapper
 
 
-# 框架中的唯一进程池，进程的个数为当前机器cpu个数
-_process_pool = None
-# 注册cpu装饰器的函数
-_cpu_deco_register = []
-# 注册io装饰器的函数
-_io_deco_register = []
+class DecoRegister(object):
+    """装饰器注册器"""
 
+    _register = []
 
-def _sugar_lazy_call():
-    """懒加载方法转调用规则"""
-    pass
+    @classmethod
+    def register(cls, cls_name, fn_name):
+        cls._register.append((cls_name, fn_name))
 
-
-def _sugar_magic_call(cls_name, fn_name):
-    """系统内建方法转调用规则"""
-    if not fn_name.startswith(cls_name):
-        real_fn_name = '_{}{}'.format(cls_name, fn_name)
-    else:
-        real_fn_name = fn_name
-    return real_fn_name
-
-
-def deepdive(obj):
-    """深入查看当前的调用链，返回的调用链都是bridge"""
-
-    if isinstance(obj, NLPShortcutCore):
-        for bridge in obj.call_stack:
-            yield bridge
-
-        for bridge in obj.call_stack:
-            if bridge.return_obj and bridge.return_obj is not obj:
-                yield from deepdive(bridge.return_obj)
-    else:
-        print("'deepdive' dive in 'NLPShortcutCore' object")
-        raise AttributeError
-
-
-def callable_register(fn):
-    """函数调用注册器
-    XXX方法的目的是调用本对象的__XXX方法
-    """
-
-    def is_function_valid(cls, func):
-        if fn not in dir(cls):
+    @classmethod
+    def is_register(cls, cls_name, fn_name):
+        if (cls_name, fn_name) in cls._register:
             return True
         else:
-            print("AttributeError: '{}' object has no attribute '{}'".format(cls.__class__.__name__,
-                                                                             func))
-            raise AttributeError
+            return False
+
+
+class DecoCpuRegister(DecoRegister):
+    """cpu 装饰器注册器"""
+
+    _register = []
+    _pool = None
+
+    @staticmethod
+    def initialize_pool():
+        if ProcessPoolWrapper.in_main() and not DecoCpuRegister._pool:
+            DecoCpuRegister._pool = ProcessPoolWrapper()
+        return DecoCpuRegister._pool
+
+    @staticmethod
+    def pool():
+        if not DecoCpuRegister._pool:
+            DecoCpuRegister.initialize_pool()
+        return DecoCpuRegister._pool
+
+
+class DecoAioRegister(DecoRegister):
+    """io 装饰器注册器"""
+
+    _register = []
+    _pool = None
+
+    @staticmethod
+    def initialize_pool():
+        if ProcessPoolWrapper.in_main() and not DecoAioRegister._pool:
+            DecoAioRegister._pool = AIOPoolWrapper()
+        return DecoAioRegister._pool
+
+    @staticmethod
+    def pool():
+        if not DecoAioRegister._pool:
+            DecoAioRegister.initialize_pool()
+        return DecoAioRegister._pool
+
+
+class DecoProducerRegister(DecoRegister):
+
+    _register = []
+    _topic_producers = {}
+    _call_producers = collections.OrderedDict()
+
+    @staticmethod
+    def register_topic(topic, prod):
+        DecoProducerRegister._topic_producers[topic] = prod
+
+    @staticmethod
+    def get_producer_by_topic(topic):
+        return DecoProducerRegister._topic_producers[topic]
+
+    @staticmethod
+    def register_call(cls_name, fn_name, prod):
+        DecoProducerRegister._call_producers[(cls_name, fn_name)] = prod
+
+    @staticmethod
+    def get_last_producer(cls_name, fn_name, last=0):
+        calls = list(DecoProducerRegister._call_producers.keys())
+        try:
+            call_idx = calls.index((cls_name, fn_name))
+        except ValueError:
+            call_idx = -1
+
+        call_name = calls[call_idx-last]
+        return DecoProducerRegister._call_producers[call_name]
+
+
+def wait(fn):
+    """wait装饰器
+
+    等待之前函数执行完成
+    """
 
     @wraps(fn)
-    def wrapper(obj, fn_name):
-
-        # 调用python内建方法
-        if fn_name.startswith('__') and fn_name.endswith('__'):
-            raise AttributeError
-        elif isinstance(obj, NLPShortcutCore):
-            # 如果被调用的方法在定义类中已经存在则不需要进行方法名的转换
-            # 调用框架定义方法
-            if fn_name.startswith('__'):
-                # 系统内置方法和框架内置方法，立即执行
-                real_fn_name = '_{}{}'.format(obj.__class__.__name__, fn_name)
-                return getattr(obj, real_fn_name)()
-            elif fn_name.startswith('_'):
-                # 函数的私有变量
-                raise AttributeError
-            else:
-                # 懒加载执行的方法
-                real_fn_name = '_{}__{}'.format(obj.__class__.__name__, fn_name)
-                if is_function_valid(obj, real_fn_name):
-                    bridge = FuncBridge(obj, real_fn_name)
-                    obj.add_bridge(bridge)
-                    return fn(obj, bridge)
-        else:
-            print("'@callable_register' decorate 'NLPShortcutCore' object")
-            raise AttributeError
-
+    def wrapper(obj, bridge, *args, **kwargs):
+        for bri in bridge.nlpsc.chain.iter_previous_bridges(bridge):
+            print(bri.waiting_thread.isAlive())
+            while bri.waiting_thread.isAlive():
+                time.sleep(0.1)
+            print('previous', bri)
+        print('停止等待')
+        return fn(obj, *args, **kwargs)
     return wrapper
 
 
-def io(fn):
+def aio(fn):
     """io装饰器
 
     函数执行会被放入单线程异步中执行
@@ -101,11 +124,12 @@ def io(fn):
     """
 
     @wraps(fn)
-    def wrapper(obj, *args, **kwargs):
-        global _io_deco_register
-        _cpu_deco_register.append((obj.__class__.__name__, fn.__name__))
-        # thread = ThreadWrapper(name=fn.__name__, target=fn, args=args, kwargs=kwargs, frequency=1)
-        # thread.start()
+    def wrapper(obj, bridge, *args, **kwargs):
+        DecoAioRegister.register(obj.__class__.__name__, fn.__name__)
+        # 初始化协程任务处理池
+        pool = DecoAioRegister.initialize_pool()
+        fn(obj, bridge,  *args, **kwargs)
+        return pool
     return wrapper
 
 
@@ -122,18 +146,13 @@ def cpu(fn):
         放到执行期就不会有问题
         """
 
-        global _cpu_deco_register
-        _cpu_deco_register.append((obj.__class__.__name__, fn.__name__))
-
+        DecoCpuRegister.register(obj.__class__.__name__, fn.__name__)
         # fork进程时要知道当前内存状态,
         # 可以使用dir()查看当前内存中间中都import了哪些包
         # 初始化进程池，进程个数为cpu个数
-        global _process_pool
-        if ProcessPoolWrapper.in_main() and not _process_pool:
-            _process_pool = ProcessPoolWrapper()
-
-        fn(obj)
-        return _process_pool
+        pool = DecoCpuRegister.initialize_pool()
+        fn(obj, *args, **kwargs)
+        return pool
 
     return wrapper
 
@@ -144,63 +163,112 @@ class producer(object):
     将返回值放入指定队列中
     """
 
+    # key: topic
+    # value: producer queue
     _queues = {}
 
-    def __init__(self, topic, maxsize=0):
+    def __init__(self, topic=None, maxsize=0):
         self._process = None
-        self._queue = None
-        self._obj = None
+        self.queue = None
+        self.obj = None
+        self.fn = None
+        self.topic = topic
 
+        # 使用同一个topic的装饰器只使用同一个queue
         if topic in self._queues.keys():
-            _queue= self._queues[topic]
+            _queue = self._queues[topic]
         else:
             _manager = Manager()
             _queue = _manager.JoinableQueue(maxsize)
-
             self._queues[topic] = _queue
-        self._queue = _queue
-        setattr(producer, topic, self)
+        self.queue = _queue
 
     def __call__(self, fn):
 
         @wraps(fn)
-        def wrapper(obj, *args, **kwargs):
-            self._obj = obj
+        def wrapper(obj, bridge,  *args, **kwargs):
+            self.obj = obj
+            self.fn = fn
+            cls_name = obj.__class__.__name__
+            fn_name = fn.__name__
+
+            # 将当前的producer对象放入注册器中
+            DecoProducerRegister.register_topic(self.topic, self)
+            DecoProducerRegister.register(cls_name, fn_name)
+            DecoProducerRegister.register_call(cls_name, fn_name, self)
+
             r = fn(obj, *args, **kwargs)
 
             def while_tasks_finished():
-                ProcessPoolWrapper.processing()
-                # 所有的任务都执行完后将控制每个函数的
-                self.produce('__end__')
+                """该线程是用来通知当前生产者结束使用的"""
+                if DecoCpuRegister.is_register(cls_name, fn_name):
+                    ProcessPoolWrapper.processing()
+                elif DecoAioRegister.is_register(cls_name, fn_name):
+                    AIOPoolWrapper.processing()
+
+                # 生产中的任务都结束后，在生产者队列中插入结束信号
+                self.queue.put('__end__')
                 time.sleep(0.1)
-            # 等待所有任务被完成的线程
-            ThreadWrapper('while_tasks_finished',
-                          target=while_tasks_finished,
-                          frequency=1).start()
-            return r
+
+            if DecoCpuRegister.is_register(cls_name, fn_name) or \
+                    DecoAioRegister.is_register(cls_name, fn_name):
+                # 等待所有任务被完成的线程
+                producer_wait_thread = ThreadWrapper('producer_wait_thread',
+                                                     target=while_tasks_finished,
+                                                     frequency=1)
+                producer_wait_thread.start()
+                # 将等待线程注册到bridge中
+                bridge.waiting_thread = producer_wait_thread
+                return producer_wait_thread
+            else:
+                # 没有aio和cpu装饰器，正常结束
+                self.queue.put('__end__')
+                return r
+
         return wrapper
 
-    def produce(self, task, *args, **kwargs):
-
+    @staticmethod
+    def _produce(prod, task, *args, **kwargs):
         # 如果task不是一个可执行的任务,则直接将该结果行参数放入队列中
         if not hasattr(task, '__call__'):
-            self._queue.put(task)
+            prod.queue.put(task)
             return
 
-        # 检测是否被cpu装饰器装饰过
-        global _cpu_deco_register
-        cls_name = self._obj.__class__.__name__
-        fn_name = inspect.stack()[1][3]
-        # 如果该函数使用cpu装饰，则将produce的内容放到进程池中进行
-        if (cls_name, fn_name) in _cpu_deco_register:
-            task_wrapper = TaskWrapper(queue=self._queue,
-                                       task=task)
-            _process_pool.apply_async_task(task_wrapper)
-        elif (cls_name, fn_name) in _io_deco_register:
-            return
+        cls_name = prod.obj.__class__.__name__
+        fn_name = prod.fn.__name__
+
+        if DecoCpuRegister.is_register(cls_name, fn_name):
+            task_wrapper = ProcessTaskWrapper(queue=prod.queue,
+                                              task=task,
+                                              args=args,
+                                              kwargs=kwargs)
+            DecoCpuRegister.pool().apply_async_task(task_wrapper)
+        elif DecoAioRegister.is_register(cls_name, fn_name):
+            task_wrapper = AIOTaskWrapper(queue=prod.queue,
+                                          task=task,
+                                          args=args,
+                                          kwargs=kwargs)
+            DecoAioRegister.pool().apply_async_task(task_wrapper)
         else:
-            self._queue.put(task)
-            return
+            prod.queue.put(task)
+
+    @staticmethod
+    def produce(cls_name, fn_name, task, *args, **kwargs):
+        """向最后一个注册的producer中生产任务"""
+
+        prod = DecoProducerRegister.get_last_producer(cls_name, fn_name)
+        producer._produce(prod, task, *args, **kwargs)
+
+    @staticmethod
+    def produce_by_topic(topic, task, *args, **kwargs):
+        """向指定topic中生产任务"""
+
+        prod = DecoProducerRegister.get_producer_by_topic(topic)
+        producer._produce(prod, task, *args, **kwargs)
+
+    def collect(self):
+        """收集队列中的结果信息"""
+        pass
 
 
 class consumer(producer):
@@ -209,26 +277,166 @@ class consumer(producer):
     改变执行期从指点队列中获取
     """
 
-    def __init__(self, topic):
-        super(consumer, self).__init__(topic)
-        setattr(consumer, topic, self)
-
-    def __call__(self, fn):
-
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-        return wrapper
-
-    def consume(self):
+    @staticmethod
+    def _consume(prob):
         while True:
             try:
-                v = self._queue.get(timeout=0.01)
+                v = prob.queue.get(timeout=0.01)
                 if v == '__end__':
                     break
                 yield v
             except Empty:
                 continue
+
+    @staticmethod
+    def consume(cls_name, fn_name):
+        """获取与其连接的生产者队列消费迭代器"""
+
+        if DecoProducerRegister.is_register(cls_name, fn_name):
+            prod = DecoProducerRegister.get_last_producer(cls_name, fn_name, 1)
+        else:
+            prod = DecoProducerRegister.get_last_producer(cls_name, fn_name, 0)
+        return consumer._consume(prod)
+
+    @staticmethod
+    def consume_by_topic(topic):
+        """根据topic的名称来获取队列消费迭代器"""
+
+        prod = DecoProducerRegister.get_producer_by_topic(topic)
+        return consumer._consume(prod)
+
+
+class FuncBridge(object):
+    """调用方法时，实际在使用该类进行调用的方法的注册"""
+
+    unique_obj_cache = {}
+
+    def __init__(self, calling, fn_name, fn_desc=None):
+        self.nlpsc = None
+        self._calling = calling
+        self._fn_name = fn_name
+        self._fn_args = ()
+        self._fn_kwargs = {}
+        self._fn_desc = fn_desc if fn_desc else '{} processing'.format(self._fn_name)
+        fn_return_type = getattr(self._calling, self._fn_name).__annotations__['return']
+        fn_return_type_name = fn_return_type.__class__.__name__
+
+        if fn_return_type_name not in self.unique_obj_cache.keys():
+            self._fn_return_obj = fn_return_type()
+            self.unique_obj_cache[fn_return_type_name] = self._fn_return_obj
+        else:
+            self._fn_return_obj = self.unique_obj_cache[fn_return_type_name]
+
+        self._waiting_thread = None
+
+    def __call__(self, *args, **kwargs):
+        self._fn_args = args
+        self._fn_kwargs = kwargs
+        return self._fn_return_obj
+
+    def __str__(self):
+        return '<FuncBridge {} {} {} {}>'.format(self._calling, self._fn_name, self._fn_args, self._fn_kwargs)
+
+    def call(self):
+        return getattr(self._calling, self._fn_name)(self, *self._fn_args, **self._fn_kwargs)
+
+    @property
+    def return_obj(self):
+        return self._fn_return_obj
+
+    @property
+    def cls_name(self):
+        return self._calling.__class__.__name__
+
+    @property
+    def fn_name(self):
+        return self._fn_name
+
+    @property
+    def waiting_thread(self):
+        return self._waiting_thread
+
+    @waiting_thread.setter
+    def waiting_thread(self, thread):
+        self._waiting_thread = thread
+
+
+def _sugar_lazy_call(cls_name, fn_name):
+    """懒加载方法转调用规则"""
+
+    return '_{}__{}'.format(cls_name, fn_name)
+
+
+def _sugar_magic_call(cls_name, fn_name):
+    """系统内建方法转调用规则"""
+
+    return '_{}{}'.format(cls_name, fn_name)
+
+
+def callable_register(fn):
+    """函数调用注册器
+    用于把用户调用的方法转换成bridge，lazy_call时使用
+    """
+
+    def is_function_valid(cls, func):
+        if fn not in dir(cls):
+            return True
+        else:
+            print("AttributeError: '{}' object has no attribute '{}'".format(cls.__class__.__name__,
+                                                                             func))
+            raise AttributeError
+
+    @wraps(fn)
+    def wrapper(obj, fn_name):
+        # 调用python内建方法
+        if fn_name.startswith('__') and fn_name.endswith('__'):
+            raise AttributeError
+        elif isinstance(obj, NLPShortcutCore):
+            # 如果被调用的方法在定义类中已经存在,则不需要进行方法名的转换
+            # 调用框架定义方法
+            if fn_name.startswith('__'):
+                # 系统内置方法和框架内置方法，立即执行
+                real_fn_name = _sugar_magic_call(obj.__class__.__name__, fn_name)
+                return getattr(obj, real_fn_name)()
+            else:
+                # 懒加载执行的方法
+                real_fn_name = _sugar_lazy_call(obj.__class__.__name__, fn_name)
+                if is_function_valid(obj, real_fn_name):
+                    bridge = FuncBridge(obj, real_fn_name)
+                    obj.add_bridge(bridge)
+                    return bridge
+        else:
+            print("'@callable_register' decorate 'NLPShortcutCore' object")
+            raise AttributeError
+
+    return wrapper
+
+
+class _BridgeChain(object):
+
+    def __init__(self):
+        self._chains = collections.OrderedDict()
+
+    def register(self, bridge):
+        self._chains[bridge.fn_name] = bridge
+
+    def get_last_bridge(self, bridge, last=1):
+        pass
+
+    def get_next_bridge(self, bridge, nex=1):
+        pass
+
+    def iter_previous_bridges(self, bridge):
+        """返回当前bridge之前bridge的迭代器"""
+
+        ks = list(self._chains.keys())
+        p = ks.index(bridge.fn_name)
+        for k in ks[:p]:
+            yield self._chains[k]
+
+    def iter(self):
+        for bridge in self._chains.values():
+            yield bridge
 
 
 class NLPShortcutCore(object):
@@ -240,13 +448,43 @@ class NLPShortcutCore(object):
     def __init__(self):
         self.call_stack = []
         self.child_obj = None
+        self.chain = _BridgeChain()
 
     @callable_register
     def __getattr__(self, fn):
         return fn
 
+    def deepdive(self, obj):
+        """深入查看当前的调用链，返回的调用链都是bridge"""
+
+        if isinstance(obj, NLPShortcutCore):
+            for bridge in obj.call_stack:
+                self.chain.register(bridge)
+                yield bridge
+
+            for bridge in obj.call_stack:
+                if bridge.return_obj and bridge.return_obj is not obj:
+
+                    yield from self.deepdive(bridge.return_obj)
+        else:
+            print("'deepdive' dive in 'NLPShortcutCore' object")
+            raise NLPSCError
+
     def add_bridge(self, bridge):
         self.call_stack.append(bridge)
+
+    def produce(self, task, *args, **kwargs):
+        cls_name = self.__class__.__name__
+        fn_name = inspect.stack()[1].function
+        producer.produce(cls_name, fn_name, task, *args, **kwargs)
+
+    def consume(self):
+        cls_name = self.__class__.__name__
+        fn_name = inspect.stack()[1].function
+        return consumer.consume(cls_name, fn_name)
+
+    def iter_bridge(self):
+        yield from self.chain.iter()
 
     @staticmethod
     def iter_process(objs, fn_name, *args, **kwargs):

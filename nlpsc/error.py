@@ -1,5 +1,5 @@
 # encoding:utf-8
 
 
-class NLPSError(Exception):
+class NLPSCError(Exception):
     pass

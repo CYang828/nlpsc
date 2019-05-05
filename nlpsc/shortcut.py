@@ -1,35 +1,19 @@
 # encoding:utf-8
 
-# import asyncio
+import time
 
-from .core import callable_register, NLPShortcutCore, deepdive, producer, io, cpu
 from .corpus import Corpus
-from .document import make_document
-from .util.thread import ThreadWrapper
-from .util.file import get_files, aio_read_file
-from .util.tool import CommandProcessBar, uniqueid
+from .util.file import get_files
+from .document import file2document
+from .util.aio import AIOPoolWrapper
 from .util.process import ProcessPoolWrapper
+from .core import NLPShortcutCore, producer, aio
 
 
 __all__ = ['NLPShortcut']
 
 
-def load_data_from_file(fin, lang='zh', fn=None):
-    """
-    从文件中加载数据，放回document对象
-
-    :argument
-        fin:
-            输入的数据，可以是文件路径或者文件所在的目录
-        lang:
-            语言类型 (zh, en)
-        filter:
-            如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件
-    """
-    return NLPShortcut().load_data_from_file(fin, lang=lang, fn=fn)
-
-
-# async def _load_data_from_file(count_files, files, corpus,  lang, fn):
+# async def _load_data_from_file(files, corpus,  lang, fn):
 #     with CommandProcessBar(total=count_files, desc='read_files process') as pbar:
 #         pbar.update(1)
 #         for name, path in files:
@@ -67,8 +51,10 @@ def load_data_from_file(fin, lang='zh', fn=None):
 
 class NLPShortcut(NLPShortcutCore):
 
-    def __init__(self):
+    def __init__(self, name=None):
         super(NLPShortcut, self).__init__()
+        self.name = name
+        self._corpus = None
 
     def __enter__(self):
         return self
@@ -77,43 +63,78 @@ class NLPShortcut(NLPShortcutCore):
         self.lazy_call()
 
     def lazy_call(self):
-        """真实执行具体操作的方法"""
+        """真实执行操作的方法"""
 
+        pools = []
+
+        # 遍历整个调用树，运行真实的处理函数
         try:
-            print(__package__)
-            for i, bridge in enumerate(deepdive(self)):
-                print("{} bridge".format(i))
-                worker = bridge.call()
+            for bridge in self.deepdive(self):
+                bridge.nlpsc = self
+                r = bridge.call()
+                if isinstance(r, (ProcessPoolWrapper, AIOPoolWrapper)):
+                    pools.append(r)
+                self._corpus = bridge.return_obj
+                self._corpus.name = self.name
 
-            print(worker)
-            print('main process stop')
+            # 等待cpu和io的pool中的任务完成
+            for pool in pools:
+                while not pool.tasks_finished():
+                    time.sleep(0.5)
         except KeyboardInterrupt:
-            print('exit nlpsc')
+            print('Ctrl + C -- exit nlpsc!')
+            exit(0)
         finally:
             ProcessPoolWrapper.stop()
+            AIOPoolWrapper.stop()
 
-    def a(self):
-        import time
-        time.sleep(1)
-        print('load data produce: a')
-        return 'a'
+    @aio
+    @producer(topic="load_corpus_from_file")
+    def __load_corpus_from_file(self, fin, lang='zh', fn=None) -> Corpus:
+        """从文件或文件夹中加载语料库
 
-    @io
-    @producer(topic="test")
-    def __load_data_from_file(self) -> Corpus:
-        # corpus = Corpus()
-        # files = get_files(fin, fn)
-        # count_total_files = len(files)
-        # loop = asyncio.get_event_loop()
-        # try:
-        #     corpus = loop.run_until_complete(_load_data_from_file(count_total_files, files, corpus, lang, fn))
-        # finally:
-        #     loop.close()
-        # return corpus
-        print('load')
-        for i in range(10):
-            producer.test.produce(self.a)
-        print('load data finish')
+        :argument
+            fin:
+                输入的数据，可以是文件路径或者文件所在的目录
+            lang:
+                语言类型 (zh, en)
+            fn:
+                如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件"""
+
+        files = get_files(fin, fn)
+        for name, path in files:
+            self.produce(file2document,
+                         path,
+                         'r',
+                         encoding='utf-8-sig',
+                         lang=lang)
+        print('load files finished, get a corpus!')
+
+    @aio
+    @producer(topic='load_corpus_from_dump')
+    def __load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Corpus:
+        """从dump的文件中加载语料库
+
+        :argument
+            fin:
+                输入的数据，可以是文件路径或者文件所在的目录
+            lang:
+                语言类型 (zh, en)
+            fn:
+                如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件"""
+
+        print('load dump file finished, get a corpus!')
+
+    def get_corpus(self):
+        """获取语料库"""
+        return self._corpus
+
+    def serving(self):
+        """提供对外的http服务，在线进行语料库的标注等工作"""
+        pass
+
+
+
 
 
 

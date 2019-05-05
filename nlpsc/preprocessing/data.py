@@ -2,10 +2,11 @@ import re
 
 
 punctuation = re.compile(r"[-~!@#$%^&*()_+`=\[\]\\\{\}\"|;':,./<>?·！@#￥%……&*（）——+【】、；‘：“”，。、《》？「『」』]")
+wrap = re.compile(r"(\n+)")
 
 
 def literal_clean(literal):
-    return punctuation.sub('', literal)
+    return wrap.sub('\n', punctuation.sub('', literal).replace(' ', ''))
 
 
 if __name__ == '__main__':

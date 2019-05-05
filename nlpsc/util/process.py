@@ -4,24 +4,27 @@
 
 import os
 import time
-
 from queue import Empty
-from multiprocessing import Process, cpu_count, JoinableQueue, Event, Manager, Value, Pool
+from multiprocessing import Process, cpu_count, JoinableQueue, Event, Manager
 
 
-class TaskWrapper(object):
+class ProcessTaskWrapper(object):
     """进程池处理任务使用的包装器"""
 
     def __init__(self, queue, task, args=(), kwargs={}):
+        # 结果存储队列
         self._queue = queue
         self._task = task
         self._args = args
         self._kwargs = kwargs
 
-    def __call__(self, *args, **kwargs):
-        r = self._task(*args, **kwargs)
+    def __call__(self):
+        r = self._task(*self._args, **self._kwargs)
         self._queue.put(r)
         return r
+
+    def __str__(self):
+        return '<ProcessTaskWrapper {} {} {} {}>'.format(self._queue, self._task, self._args, self._kwargs)
 
 
 class ProcessWrapper(Process):
@@ -34,47 +37,36 @@ class ProcessWrapper(Process):
 
     def run(self):
         while not self.proceed.is_set():
-            # print('在循环')
             try:
-                tp, task, args, kwargs = self.queue.get(timeout=0.1)
+                tp, task = self.queue.get(timeout=0.1)
             except Empty:
                 continue
 
             if tp == 'task':
-                print('执行', task)
                 r = task()
                 self.queue.task_done()
                 print('执行完成', r)
 
             time.sleep(0.1)
 
-        print('结束进程')
-
 
 class ProcessPoolWrapper(object):
 
     _pid = os.getppid()
-    print('主进程id', _pid)
     _processpool = []
 
     def __init__(self):
-        print('当前进程id', os.getppid())
         if os.getppid() == self._pid:
             self.size = cpu_count()
-            print('进程池初始化 - {}'.format(self.size))
             for _ in range(self.size):
                 p = ProcessWrapper()
                 self._processpool.append(p)
                 p.start()
+            print('process pool initialize - core num {}'.format(self.size))
 
     @staticmethod
-    def apply_async_task(task, args=(), kwargs={}):
-        print('put queue start')
-        ProcessWrapper.queue.put(('task',
-                                  task,
-                                  args,
-                                  kwargs))
-        print('put queue end')
+    def apply_async_task(task):
+        ProcessWrapper.queue.put_nowait(('task', task))
 
     @staticmethod
     def tasks_finished():
@@ -90,6 +82,7 @@ class ProcessPoolWrapper(object):
     @staticmethod
     def processing():
         """阻塞等待任务队列中的所有任务处理完成"""
+
         ProcessWrapper.queue.join()
 
     @staticmethod

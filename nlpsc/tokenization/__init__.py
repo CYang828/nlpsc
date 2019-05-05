@@ -1,3 +1,10 @@
+# encoding:utf-8
+
+"""
+使用paddle的lac可以进一步提升分词、词性标注、命名识别的准确性
+TODO：后续集成
+"""
+
 import jieba
 try:
     import pkuseg
