@@ -8,10 +8,10 @@ from .util.tool import uniqueid
 from .tokenization import Tokenization
 from .util.file import aio_read_file
 from .preprocessing.data import literal_clean
-from .util.file import gen_filename, aio_write_file
+from .util.file import aio_write_file
 
 
-async def file2document(path, pattern, encoding, lang='zh'):
+async def file2document(path, pattern, encoding, lang):
     """文件转换程文档"""
     path = os.path.abspath(path)
     text = await aio_read_file(path, pattern, encoding)

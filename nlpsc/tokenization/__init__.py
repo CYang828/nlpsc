@@ -6,24 +6,22 @@ TODO：后续集成
 """
 
 import jieba
-try:
-    import pkuseg
-except ModuleNotFoundError as e:
-    print('if you want to use pkuseg tokenizer, please use `pip install pkuseg` first')
+
+from ..tokenization.lac import PaddleLACModel
 
 
 class Tokenization(object):
 
-    tokenizer_option = ('jieba', 'pkuseg')
+    tokenizer_option = ('jieba', 'pkuseg', 'lac')
 
     def __init__(self):
-        self._tokenizer = jieba
+        self._tokenizer = PaddleLACModel()
 
     def configuration(self, **setting):
-        tokenizer = setting.get('tokenizer', 'jieba')
+        tokenizer = setting.get('tokenizer', 'lac')
         userdict = setting.get('userdict')
         parallel = setting.get('parallel', 1)
-
+        print(tokenizer)
         if tokenizer == 'jieba':
             self._tokenizer = jieba
             if userdict:
@@ -31,7 +29,13 @@ class Tokenization(object):
             if parallel > 1:
                 jieba.enable_parallel(parallel)
         elif tokenizer == 'pkuseg':
+            try:
+                import pkuseg
+            except ModuleNotFoundError as e:
+                print('if you want to use pkuseg tokenizer, please use `pip install pkuseg` first')
             self._tokenizer = pkuseg.pkuseg(user_dict=userdict)
+        elif tokenizer == 'lac':
+            self._tokenizer = PaddleLACModel()
 
     def cut(self, literal):
         return self._tokenizer.cut(literal)

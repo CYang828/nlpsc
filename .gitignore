@@ -4,3 +4,10 @@ build/
 dist/
 *.egg-info/
 .idea/*
+output/*
+__pycache__/
+nlpsc/__pycache__/
+nlpsc/output/
+nlpsc/preprocessing/__pycache__/
+nlpsc/tokenization/__pycache__/
+nlpsc/util/__pycache__/

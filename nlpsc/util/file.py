@@ -34,8 +34,13 @@ def get_files(fin, filter_func=None):
         name = os.path.basename(fin)
         return [(name, fin)]
     else:
-        print("{} it's noexist or a special file(socket,FIFO,device file), please check your input location".format(fin))
+        print("{} it's noexist or a special file(socket,FIFO,device file), "
+              "please check your input location".format(fin))
         raise OSError
+
+
+def get_default_path(subpath=''):
+    return os.path.join(os.path.abspath('{}/../default/'.format(os.path.dirname(os.path.abspath(__file__)))), subpath)
 
 
 def create_file(output_dir, name, text):
@@ -64,4 +69,3 @@ async def aio_write_file(outdir, name, content, pattern='w', encoding='utf-8'):
     except FileNotFoundError as e:
         print('make sure {0} exist, `mkdir -p {0}` may fix it'.format(outdir))
         return
-

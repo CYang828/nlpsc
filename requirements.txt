@@ -1,4 +1,7 @@
+numpy
+six
 tqdm
 jieba
 aiofiles
 gensim
+paddlepaddle>=1.4
