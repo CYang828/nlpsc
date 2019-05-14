@@ -208,6 +208,16 @@ class BaseReader(object):
 
         return _wrapper
 
+    def convert_example_to_erine_input(self, texts):
+        Example = namedtuple('Example', ['text_a', 'label'])
+        records = []
+        for text in texts:
+            example = Example(text_a=text, label='')
+            record = self._convert_example_to_record(example, self.max_seq_len, self.tokenizer)
+            records.append(record)
+        erine_inputs = self._pad_batch_records(records)
+        return erine_inputs
+
 
 class ClassifyReader(BaseReader):
     """ClassifyReader"""

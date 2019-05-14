@@ -39,6 +39,7 @@ class ProcessWrapper(Process):
         while not self.proceed.is_set():
             try:
                 tp, task = self.queue.get(timeout=0.1)
+                print('接收任务')
             except Empty:
                 continue
 

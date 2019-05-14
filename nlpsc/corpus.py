@@ -87,9 +87,8 @@ class Corpus(NLPShortcutCore):
     @producer(topic='document_clean')
     def __iter_clean(self) -> Corpus:
         for document in self.consume():
-            document.clean()
+            self.produce(document.clean)
             self.add(document)
-            self.produce(document)
         print('finish clean')
         return self
 
@@ -105,12 +104,8 @@ class Corpus(NLPShortcutCore):
     def __iter_tokenize(self, tokenizer=None, userdict=None) -> Corpus:
         print('start token')
         for document in self.consume():
-            print(userdict)
-            document.tokenize(tokenizer=tokenizer,
-                              userdict=userdict)
-            self.produce(document)
+            self.produce(document.tokenize, tokenizer=tokenizer, userdict=userdict)
             self.add(document)
-            print(document)
         print('end token')
         return self
 
@@ -119,10 +114,17 @@ class Corpus(NLPShortcutCore):
     def __iter_stopword(self, stopwordict=None) -> Corpus:
         print('document_stopword')
         for document in self.consume():
-            document.stopword(stopwordict)
+            self.produce(document.stopword, stopwordict=stopwordict)
             self.add(document)
-            self.produce(document)
         print('stopword finished')
+        return self
+
+    @cpu
+    @producer(topic='document_represent')
+    def __iter_represent(self) -> Corpus:
+        for document in self.consume():
+            self.produce(document.represent)
+            self.add(document)
         return self
 
     @cpu

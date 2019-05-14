@@ -1,47 +1,45 @@
 # encoding:utf-8
 
 import numpy as np
+from itertools import chain
 from collections import namedtuple
 
-from ..model import PaddleModel
-from ..util.file import get_default_path
 from ..util.python import to_str
-from ..representation.ernie import task_reader
+from ..model import PaddleInferModel
+from ..util.file import get_default_path
+from ..representation.ernie.util import split_text
+from ..representation.ernie.reader import SequenceLabelReader
 
 
-class PaddleLACModel(PaddleModel):
+class PaddleLACInferModel(PaddleInferModel):
     """lac 语言分析模型
 
     超过max_seq_len的文本会被截断"""
 
-    def __init__(self, use_gpu=False, max_seq_len=258,
-                 do_lower_case=True, random_seed=0, pretained_model=None):
-        super(PaddleLACModel, self).__init__(use_gpu)
-        self._vocab_path = get_default_path('pretrained-models/lac-inference/vocab.txt')
-        self._label_map_config = get_default_path('pretrained-models/lac-inference/label_map.json')
+    def __init__(self, use_gpu=False, max_seq_len=128,
+                 do_lower_case=True, random_seed=0, pretrained_model=None):
+        super(PaddleLACInferModel, self).__init__(use_gpu)
+        self._vocab_path = get_default_path('ernie/vocab.txt')
+        self._label_map_config = get_default_path('ernie/label_map.json')
         self._random_seed = random_seed
         self._max_seq_len = max_seq_len
         self._do_lower_case = do_lower_case
-        self._reader = self._init_reader()
-        self._dataset = self._load_dataset()
-        pretrained_path = pretained_model if pretained_model\
+        self._reader = SequenceLabelReader(vocab_path=self._vocab_path,
+                                           label_map_config=self._label_map_config,
+                                           max_seq_len=self._max_seq_len,
+                                           do_lower_case=self._do_lower_case,
+                                           in_tokens=False,
+                                           random_seed=self._random_seed)
+        self._load_dataset()
+        pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/lac-inference/')
         self.load(pretrained_path)
-
-    def _init_reader(self):
-        return task_reader.SequenceLabelReader(
-            vocab_path=self._vocab_path,
-            label_map_config=self._label_map_config,
-            max_seq_len=self._max_seq_len,
-            do_lower_case=self._do_lower_case,
-            in_tokens=False,
-            random_seed=self._random_seed)
 
     def _load_dataset(self):
         id2word_dict = dict([(str(word_id), word) for word, word_id in self._reader.vocab.items()])
         id2label_dict = dict([(str(label_id), label) for label, label_id in self._reader.label_map.items()])
         Dataset = namedtuple("Dataset", ["id2word_dict", "id2label_dict"])
-        return Dataset(id2word_dict, id2label_dict)
+        self._dataset = Dataset(id2word_dict, id2label_dict)
 
     def infer(self, texts, segment=False):
         """推断text的成分
@@ -116,4 +114,9 @@ class PaddleLACModel(PaddleModel):
             yield tokens
 
     def cut(self, text):
-        return list(self.infer([text], segment=True))[0]
+        """分词
+
+        如果文本超过max_seq_len, 文本会被切分成多段文本进行分词"""
+
+        texts = split_text(text, self._max_seq_len)
+        return list(chain.from_iterable(list(self.infer(texts, segment=True))))

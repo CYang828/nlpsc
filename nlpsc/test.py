@@ -1,17 +1,17 @@
 # encoding:utf-8
 
-from nlpsc.shortcut import NLPShortcut
-
-
-with NLPShortcut(name='数学语料库') as ns:
-    ns.load_corpus_from_file('../../test_docs') \
-         .iter_clean() \
-         .iter_tokenize(tokenizer='jieba', userdict='math-chinese.txt') \
-         .iter_stopword() \
-         .iter_dump('output/')
-
-for document in ns.get_corpus().iter():
-    print(document)
+# from nlpsc.shortcut import NLPShortcut
+#
+#
+# with NLPShortcut(name='数学语料库') as ns:
+#     ns.load_corpus_from_file('../../test_docs') \
+#          .iter_clean() \
+#          .iter_tokenize(tokenizer='lac', userdict='math-chinese.txt') \
+#          .iter_stopword() \
+#          .iter_dump('output/')
+#
+# for document in ns.get_corpus().iter():
+#     print(document)
 
 
 # from nlpsc.tokenization.lac import PaddleLACModel
@@ -24,3 +24,11 @@ for document in ns.get_corpus().iter():
 #                                  'Python在进行编码方式之间的转换时，会将 unicode 作为“中间编码”，但 unicode 最大只有128那么长，所以这里当尝试将 ascii 编码字符串转换成”中间编码” unicode 时由于超出了其范围，就报出了如上错误。将Python的默认编码方式修改为utf-8即可，在py文件开头加入以下代码：']):
 #     print(s)
 
+
+from nlpsc.representation.ernie import PaddleErnieInferModel
+
+
+PaddleErnieInferModel().infer(['我爱北京我是北京天安门'])
+
+print(PaddleErnieInferModel().token_embedding('方法随机').shape)
+print(PaddleErnieInferModel().sentence_embedding('方法随机sssssssssssss').shape)

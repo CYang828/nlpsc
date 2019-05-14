@@ -147,6 +147,7 @@ def cpu(fn):
         """
 
         DecoCpuRegister.register(obj.__class__.__name__, fn.__name__)
+        print(obj.__class__.__name__, fn.__name__)
         # fork进程时要知道当前内存状态,
         # 可以使用dir()查看当前内存中间中都import了哪些包
         # 初始化进程池，进程个数为cpu个数
@@ -236,20 +237,22 @@ class producer(object):
 
         cls_name = prod.obj.__class__.__name__
         fn_name = prod.fn.__name__
-
         if DecoCpuRegister.is_register(cls_name, fn_name):
             task_wrapper = ProcessTaskWrapper(queue=prod.queue,
                                               task=task,
                                               args=args,
                                               kwargs=kwargs)
+            print('cpu放入任务')
             DecoCpuRegister.pool().apply_async_task(task_wrapper)
         elif DecoAioRegister.is_register(cls_name, fn_name):
             task_wrapper = AIOTaskWrapper(queue=prod.queue,
                                           task=task,
                                           args=args,
                                           kwargs=kwargs)
+            print('aio放入任务')
             DecoAioRegister.pool().apply_async_task(task_wrapper)
         else:
+            print('normal task')
             prod.queue.put(task)
 
     @staticmethod

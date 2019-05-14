@@ -7,7 +7,7 @@ TODO：后续集成
 
 import jieba
 
-from ..tokenization.lac import PaddleLACModel
+from ..tokenization.lac import PaddleLACInferModel
 
 
 class Tokenization(object):
@@ -15,7 +15,7 @@ class Tokenization(object):
     tokenizer_option = ('jieba', 'pkuseg', 'lac')
 
     def __init__(self):
-        self._tokenizer = PaddleLACModel()
+        self._tokenizer = PaddleLACInferModel()
 
     def configuration(self, **setting):
         tokenizer = setting.get('tokenizer', 'lac')
@@ -35,7 +35,7 @@ class Tokenization(object):
                 print('if you want to use pkuseg tokenizer, please use `pip install pkuseg` first')
             self._tokenizer = pkuseg.pkuseg(user_dict=userdict)
         elif tokenizer == 'lac':
-            self._tokenizer = PaddleLACModel()
+            self._tokenizer = PaddleLACInferModel()
 
     def cut(self, literal):
         return self._tokenizer.cut(literal)

@@ -3,7 +3,6 @@
 import time
 import asyncio
 from asyncio import QueueEmpty
-from concurrent.futures import ThreadPoolExecutor
 
 from nlpsc.util.thread import ThreadWrapper
 

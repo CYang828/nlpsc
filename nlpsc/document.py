@@ -9,6 +9,7 @@ from .tokenization import Tokenization
 from .util.file import aio_read_file
 from .preprocessing.data import literal_clean
 from .util.file import aio_write_file
+from .representation import Representation
 
 
 async def file2document(path, pattern, encoding, lang):
@@ -34,6 +35,7 @@ class Document(object):
 
     support_langs = ('zh', 'en')
     _tokenizer = Tokenization()
+    _represent = Representation()
     _stopwordict = []
 
     def __init__(self, text, lang, path=None, name=None):
@@ -54,11 +56,11 @@ class Document(object):
         self._call_stack = []
 
         # 处理后的中间文本结果
-        self.proceed = ''
+        self._proceed = ''
         # 段落
-        self.paragraphs = []
+        self._paragraphs = []
         # 句子
-        self.sentences = []
+        self._sentences = []
         # 词
         self._words = []
 
@@ -66,7 +68,7 @@ class Document(object):
         if self._words:
             show_thing = '\t' + ' | '.join(map(str, self._words[:10]))
         else:
-            show_thing = self.proceed
+            show_thing = self._proceed
 
         return '<nlpsc.document.Document -> {} ({} ......) >'.format(self.name, show_thing[:100])
 
@@ -88,12 +90,12 @@ class Document(object):
 
     def paragraph(self):
         """文章段落化"""
-        self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
+        self._paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
         return self
 
     def clean(self):
         """文档字面量清洗"""
-        self.proceed = literal_clean(self.text)
+        self._proceed = literal_clean(self.text)
         return self
 
     def preprocess(self, fn):
@@ -105,7 +107,7 @@ class Document(object):
         """
 
         if isfunction(fn):
-            self.proceed = fn(self.text)
+            self._proceed = fn(self.text)
             return self
         else:
             print("preprocess argument is a function, please check it!")
@@ -146,6 +148,7 @@ class Document(object):
                 remain_words.append(word)
         del self._words
         self._words = remain_words
+        return self
 
     def _load_stopwordict(self, stopwordict):
         """加载停用词典"""
@@ -153,11 +156,23 @@ class Document(object):
         print('load stopword: {}'.format(stopwordict))
         self._stopwordict = [line.strip() for line in open(stopwordict, 'r', encoding='utf-8').readlines()]
 
+    def represent(self):
+        """向量表示
+
+        如果使用word2vec这种静态的文本表示模型，对分词后的结果进行repr是个不错的选择
+        文本表示的方式普遍分成两种，一种特征集成（Feature Ensemble）另一种微调（Fine-tuning）模式。
+        但是如果是使用ELMO、GPT、Bert、Ernie这类的模型，则使用finetune的方式会更好"""
+        # self._represent.configuration()
+        # if self._words:
+        #     for word in self._words:
+        #         self._represent.repr(word)
+        pass
+
     def literal(self, word_delimiter=' '):
         if self._words:
             literal_text = word_delimiter.join([word.text for word in self._words])
         else:
-            literal_text = self.proceed
+            literal_text = self._proceed
         return literal_text
 
     async def dump(self, output_dir, filename, is_structured=False, prefix="dump", suffix="nlpsc",
