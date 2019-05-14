@@ -1,4 +1,4 @@
-# Representation 简要发展史
+# Representation 学习笔记
 
 >最近在学习Bert和Ernie，顺带的想回顾一下Representation的发展史，以当前的视角对之前的这些技术做些总结和思考。
 
