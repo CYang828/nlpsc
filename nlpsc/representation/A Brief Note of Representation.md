@@ -185,7 +185,7 @@ Bert还有个比较独特的东西就是Next Sentence Prediction(NSP)，其实�
 附上Bert的paper地址，方便大家去查看细节，[BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/pdf/1810.04805.pdf)。
 
 ## Ernie
-![](../../assets/ernie-id.jpeg)
+![](../../assets/ernie-id.jpg)
 
 上图左面的这个就是Ernie，没错，你没看错，右边那个是Bert，《芝麻街》的作者说他俩其实是couple。WTF，百度的同学，有点恶搞啊。
 
