@@ -5,6 +5,7 @@
 
 ## 笔记
 这里是一些学习过程中的笔记。
+
 [A Brief Note of Representation](notes/A%20Brief%20Note%20of%20Representation.md)
 
 ## License
