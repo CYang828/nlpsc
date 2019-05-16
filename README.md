@@ -22,6 +22,6 @@ Detail changes for each releases are documented in the [release notes](CHANGELOG
 
 ## License
 
-[Apache License](LICENSE.md)
+[ License](LICENSE.md)
 
-Copyright on (c) 2018-present bslience
+Copyright on (c) 2019-present bslience
