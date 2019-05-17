@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/assets/nlpsc.png">
+  <img width="380" src="/assets/nlpsc.png">
 </p>
 
 ## 介绍
