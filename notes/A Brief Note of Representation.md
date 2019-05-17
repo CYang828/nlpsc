@@ -6,7 +6,7 @@ Representation的实质是将文本转化为多种特征的描述，从而能从
 
 ## One-hot Encoding
 
-![](assets/onehot.jpg)
+![](../assets/onehot.jpg)
 
 有人叫独热编码（哑变量），但是感觉很奇怪，还是叫One-hot比较好。这是一种最早开始使用的字符级表示方法，想法非常的朴素和实用。
 根据当前要使用的语料库，建立一个词典(Vocabulary)。对于要表示的语句，查找单个token在词典中的位置，如果是则当前位置置为1。
@@ -19,7 +19,7 @@ Representation的实质是将文本转化为多种特征的描述，从而能从
 ## Word Embedding(2013)
 embedding是个神奇的东西，在刚开始学习的时候，真的是没有办法理解什么是embedding，词嵌入，纳尼！
 
-![](assets/doubt.jpg)
+![](../assets/doubt.jpg)
 
 为了能弄明白，还是看看它是怎么来的吧。
 
@@ -28,7 +28,7 @@ Word Embedding是个很久远的东西了，最早是由Bengio大神在2003年�
 经历10年沉冤，最后得以昭雪（是不是很多伟大的著作都是这样），附上大神的论文[A Neural Probabilistic Language Model](http://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf)，
 有兴趣可以看看，这里就不过多介绍了。
 
-![](assets/nnlm.jpg)
+![](../assets/nnlm.jpg)
 
 模型长成上面这个样子，我们看到的C(W)就是Word Embedding的值，那么这个值是怎么来的呢？这个值是由任意单词W用one-hot编码后，
 
@@ -48,7 +48,7 @@ Word Embedding是个很久远的东西了，最早是由Bengio大神在2003年�
 因为word embedding的这种方式，确实能在更高的纬度上给出一些词性、语意上的解释。例如下图中，我们可以看到，
 很多词性、语意相近的词语会被聚类到一起。
 
-![](assets/t-SNE%20word2vec.jpg)
+![](../assets/t-SNE%20word2vec.jpg)
 
 那么有了这个embedding后，我们怎么用呢？这里我们要插入点图像领域'迁移学习(Transfer learning)'的知识了。有人可能会问这和图像领域有什么关系？
 由于深度学习技术应用在图像领域要比应用到nlp领域早不少，所以有很多nlp领域的做法都是从图像领域借鉴而来的，我们nlp的预训练技术也是如此。
@@ -60,8 +60,8 @@ Word Embedding是个很久远的东西了，最早是由Bengio大神在2003年�
 为了训练好这样的模型，我们势必要消耗大量的时间和计算资源。那如果我们每次训练都要花费这么长的时间，深度学习技术的发展得是多么的缓慢。
 所以在图像领域就有人就想出，可不可以借用之前训练过的模型，继续训练呢？答案当然是肯定的。
 
-![](assets/1-2layers.png)
-![](assets/3-5layers.png)
+![](../assets/1-2layers.png)
+![](../assets/3-5layers.png)
 
 就像上图看到的，越是接近输入的层（低层），探测到的都是一些比较低级别的特征，比如说图像边缘的曲线、某种条纹等；而越是接近输出层，则识别到的都是更接近
 任务最终目标的的图像，比如说上图的这个任务是给图片进行分类，那么最终层（高层）所探测到的这些特征就已经非常的接近完整的类别图像了，比如说狗、人、花等。
@@ -84,7 +84,7 @@ Word Embedding是个很久远的东西了，最早是由Bengio大神在2003年�
 介绍完迁移学习，我们继续nlp的话题。这么好的方法，当然有前辈给借鉴过来了，迁移学习的思路在nlp的任务上也同样适用。之前我们说到的embedding
 矩阵Q，就是one-hot到embedding层的初始化参数。是不是很cool，这样我们就把word embedding用起来了。
 
-![](assets/onehot2embedding.png)
+![](../assets/onehot2embedding.png)
 
 优点：从one-hot encoding这种稀疏矩阵，转变成了一种稠密矩阵，降低了纬度。并且表示的向量能够在高维度中有很好的解释性。
 
@@ -95,14 +95,14 @@ Word Embedding是个很久远的东西了，最早是由Bengio大神在2003年�
 ## ELMO(2018.02)
 艾蒙（英语：Elmo）是一名虚构布偶角色，主要登场于美国儿童电视节目《芝麻街》中的多部短剧中。艾蒙是只的红色绒毛怪兽。长成下面这样。
 
-![](assets/elmo-id.jpg)
+![](../assets/elmo-id.jpg)
 
 研究人员还是很有童心的。言归正传，ELMO的全称是"Embedding from Language Models",感觉这个名字并没有反应初它的核心思想，
 提出ELMO的论文题目"Deep contextualized word representation"更能体现其精髓，contextualized是这这算法中最本质的思想。
 我们之前有说过，word embedding是一种静态的方式，就是每个单词的表达是固化的，不管上下文怎么变化，这个词的表示都是这样子的。
 这种表示方式是很不合理的，那ELMO要解决的问题就是，每个单词在不同的上下文下，能够有准确表达其在上下文中含义的表示。
 
-![](assets/elmo.png)
+![](../assets/elmo.png)
 
 ELMO的网络结构如上图所示，选用的主要特征抽取器是LSTM，任务的目的是通过W的上下文来预测W。 W之前的单词序列Context-before称为上文，
 之后的单词序列Context-after称为下文。图中左端的前向双层LSTM代表正方向编码器，输入的是从左到右顺序的除了预测单词外W的上文Context-before；
@@ -113,12 +113,12 @@ ELMO的网络结构如上图所示，选用的主要特征抽取器是LSTM，任
 比如说上图的这个任务是给图片进行分类，那么最终层（高层）所探测到的这些特征就已经非常的接近完整的类别图像了）。OK，有了这三个矩阵，
 我们就可以进行下游任务的训练了。
 
-![](assets/elmo-downstream.png)
+![](../assets/elmo-downstream.png)
 
 ELMO进行下游训练时，采用了一种双向拼接的方式。首先把三个矩阵的前向和后向矩阵拼接起来，然后给三个矩阵分别增加一个参数s0、s1和s2（这三个权重
 值可以根据后续的学习获得），然后对这三个矩阵进行自权重累加求和，整合成一个矩阵。这个矩阵就作为后续任务的补充特征提供给下游任务使用。
 
-![](assets/elmo-downstream-task.png)
+![](../assets/elmo-downstream-task.png)
 
 优点：ELMO将word embedding这种静态表示变成了一种动态的方式，很好的解决了多义词的问题，并且捕获了更多高纬度的语法、语义信息。
 
@@ -128,7 +128,7 @@ ELMO进行下游训练时，采用了一种双向拼接的方式。首先把三�
 
 ## GPT(2018)
 
-![](assets/gpt.png)
+![](../assets/gpt.png)
 
 GPT是“Generative Pre-Training”的简称，上图是该模型的网络结构，把Transformer Block当成一个整体看的话，其实这个模型跟ELMO很相似，
 大体上的思路就是把原来的LSTM换成了Transformer了。有关Transformer的讨论有点超出本篇的范围了，大概介绍就是，Transformer是Google在2017年
@@ -140,7 +140,7 @@ GPT是“Generative Pre-Training”的简称，上图是该模型的网络结构
 换成了单向的，只有前向的网络丢失很多能够捕获的信息，同样也给Bert送了一个超级大礼。针对下游任务应用ELMO的双向拼接的方式，GPT使用了FIne-tuning
 这种融合能力更强的方式，这跟图像领域的迁移学习已经一毛一样了。然后我们剩下的问题就是，怎么才能把NLP的各种各样的花式任务改造成GPT的网络结构。
 
-![](assets/gpt-finetune.png)
+![](../assets/gpt-finetune.png)
 
 上图就是GPT论文中给出的答案，对于不同的任务，改造输入部分，这样就能够在不改变网络模型的前提下，完成各种任务了。
 
@@ -153,24 +153,24 @@ GPT是“Generative Pre-Training”的简称，上图是该模型的网络结构
 ## Bert(2018.10)
 这个名字和ELMO一样，也是用《芝麻街》中的卡通星形象命名的，研究人员太顽皮了，卡通形象长成下面这个样子。
 
-![](assets/bert-id.png)
+![](../assets/bert-id.png)
 
 Bert的网络结构和GPT大体上是一致的，只是把前文说的单向的结构更换成了双向的Transformer结构，所以在网络结构方面就不多说了。在Fine-tuning阶段，
 Bert也采用了和GPT大体一致的做法，只是在有些任务改造的细节上略有不同。下面是Bert论文中给出的针对不同的任务的改造方法。
 
-![](assets/bert-finetune.jpg)
+![](../assets/bert-finetune.jpg)
 
 那么，Bert和GPT的区别在哪里？为什么Bert取得了比GPT更好的效果？下面这张图是研究人员做的有效因子分析，从这里可以看出双向的预测结构对模型的影响
 是最大的，同时增加的next sentence prediction task也对模型的效果有着明显的影响。
 
-![](assets/bert-factor.png)
+![](../assets/bert-factor.png)
 
 有关Bert宏观上的认识就说到这里了，因为Bert目前在多个NLP的任务上取得SOTA的成绩，所以我们要展开的说一说Bert模型的一些细节。
 首先让我们来看看Bert是怎样实现的双向语言模型，我们前文有说过，ELMO是用两个LSTM网络，一个负责前向、一个负责后向，那同理也可以推广到用两个
 Transformer，一个负责前向、一个负责后向。我觉得这样做应该也是可以的，但是可能会使整个结构变得非常的大，Bert采用了一种更"巧妙"的方式来实现的
 双向语言模型。
 
-![](assets/cbow.png)
+![](../assets/cbow.png)
 
 我们之前有提到过CBOW，思路是我们把要预测的单词抠掉，然后根据它的上文Context-Before和下文Context-after去预测单词。Bert就是这样做的，
 虽然作者说他的灵感是来源于完形填空，但这两种思路是一致的。论文的作者把这个叫做Masked语言模型，具体的实现细节是这样的：
@@ -180,7 +180,7 @@ Transformer，一个负责前向、一个负责后向。我觉得这样做应该
 只有80%真正被替换成[mask]标记，10%被狸猫换太子随机替换成另外一个单词，10%情况这个单词还待在原地不做改动。Masted Language Model
 是下图这个样子的。Position embedding是为了让Transformer确定时序用的。
 
-![](assets/mlm.jpg)
+![](../assets/mlm.jpg)
 
 Bert还有个比较独特的东西就是Next Sentence Prediction(NSP)，其实上文有提到过。这个东西就是做语言模型预训练的时候，
 分两种情况选择两个句子，一种是选择语料中真正顺序相连的两个句子；另外一种是第二个句子从语料库中抛色子，随机选择一个拼到第一个句子后面。
@@ -188,11 +188,11 @@ Bert还有个比较独特的东西就是Next Sentence Prediction(NSP)，其实�
 之所以这么做，是考虑到很多NLP任务是句子关系判断任务，单词预测粒度的训练到不了句子关系这个层级，增加这个任务有助于下游句子关系判断任务。
 所以可以看到，它的预训练是个多任务过程。
 
-![](assets/bert-masked.png)
+![](../assets/bert-masked.png)
 
 最后，让我们来看看Bert的效果。
 
-![](assets/bert-effect.png)
+![](../assets/bert-effect.png)
 
 只能说，赶紧去把之前的算法改成Bert版的吧。
 
@@ -202,17 +202,19 @@ Bert还有个比较独特的东西就是Next Sentence Prediction(NSP)，其实�
 
 ## Ernie
 
+![](../assets/ernie-id.jpg)
+
 上图左面的这个就是Ernie，没错，你没看错，右边那个是Bert，《芝麻街》的作者说他俩其实是couple。WTF，百度的同学，有点恶搞啊。
 Ernie来自于百度，主要是在Bert的基础上，增添了一些知识增强的工作。在百度放出的对于中文的nlp任务上的结果，全面超过了Bert。
 
-![](assets/ernie-effect.jpg)
+![](../assets/ernie-effect.jpg)
 
 那让我们来具体说说百度是怎么做的。百度这个工作的主要想法是，希望能把知识图谱融入到语言模型中，因为之前说Bert的时候，Transformer特征抽取器
 在学习语言特征的时候，这其中就可能包含一部分"知识图谱"相关的知识，比如说"相对论理论是由爱因斯坦创立的"这种。但是由于这个网络的任务毕竟不是
 学习知识图谱，所以对于这种类型的特征的抽取能力并不太强。那么Ernie就是强行让"Transformer"强行学会知识图谱相关的知识。
 那么具体怎么做呢？
 
-![](assets/ernie.jpg)
+![](../assets/ernie.jpg)
 
 如上图所示，预训练阶段仍旧采取字输入，但是Mask对象是单词，这些单词里面可能有百度多年沉下来的实体词，使用这种方式"强迫"网络学会知识图谱的信息。
 还有就是，百度使用了更多的中文语料对模型进行训练。我的理解是，Ernie实质上还是一个多任务的模型，跟Bert把NSP融入的模型中有着相似的思路。

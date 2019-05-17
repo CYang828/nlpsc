@@ -1,6 +1,10 @@
+<p align="center">
+  <img width="320" src="/assets/nlpsc.png">
+</p>
+
 ## 介绍
-[nlpsc](https://github.com/BSlience/nlpsc) 是一个希望nlp初学者可以快速学习理论并实践的项目. 这里有学习时的笔记和验证的代码，
-你也可以把你的学习笔记和代码PR给我，让更多的人能在学习NLP的过程中少走弯路。
+[nlpsc](https://github.com/BSlience/nlpsc) 是一个nlp初学者可以快速学习理论并实践，nlp进阶者快速验证模型的项目。
+这里有学习时的笔记、验证的代码和大家的思考，你也可以把你的文字和代码PR给我，让更多的人能在学习NLP的过程中少走弯路。
 目前深度学习框架选用的是[Paddle](https://github.com/PaddlePaddle/Paddle)和[tensorflow](https://github.com/tensorflow/tensorflow)
 
 ## 笔记
