@@ -4,9 +4,9 @@
 from ...model import PaddleInferModel
 
 
-class PaddleErnieModel(PaddleInferModel):
+class PaddleBertModel(PaddleInferModel):
     def __init__(self):
-        super(PaddleErnieModel, self).__init__()
+        super(PaddleBertModel, self).__init__()
 
     def infer(self, *args, **kwargs):
         pass

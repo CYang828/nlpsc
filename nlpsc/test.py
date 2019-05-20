@@ -25,10 +25,31 @@
 #     print(s)
 
 
-from nlpsc.representation.ernie import PaddleErnieInferModel
+# from nlpsc.representation.ernie import PaddleErnieInferModel
+#
+#
+# PaddleErnieInferModel().infer(['我爱北京我是北京天安门'])
+#
+# print(PaddleErnieInferModel().token_embedding('方法随机').shape)
+# print(PaddleErnieInferModel().sentence_embedding('方法随机sssssssssssss').shape)
 
 
-PaddleErnieInferModel().infer(['我爱北京我是北京天安门'])
+from nlpsc.representation.ernie import PaddleErniePretrainedModel, ClassifyReader
 
-print(PaddleErnieInferModel().token_embedding('方法随机').shape)
-print(PaddleErnieInferModel().sentence_embedding('方法随机sssssssssssss').shape)
+model = PaddleErniePretrainedModel()
+
+reader = ClassifyReader(vocab_path,
+                        label_map_config=None,
+                        max_seq_len=512,
+                        do_lower_case=True,
+                        in_tokens=False,
+                        random_seed=None)
+reader = model.create_file_reader()
+reader.read()
+
+with model.finetune():
+    pass
+
+model.train(reader)
+model.infer()
+model.evaluate()

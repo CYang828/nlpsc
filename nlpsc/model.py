@@ -16,17 +16,6 @@ class PaddleModel(object):
             place = fluid.CPUPlace()
         self._exe = fluid.Executor(place)
 
-    def model(self):
-        """模型创建
-
-        :return
-            main_program: 模型的main program"""
-        raise NotImplemented
-
-    def train(self,  *args, **kwargs):
-        """模型训练"""
-        raise NotImplemented
-
 
 class PaddleInferModel(PaddleModel):
     """paddle推理模型基类"""
@@ -37,7 +26,7 @@ class PaddleInferModel(PaddleModel):
         self._feed_target_names = None
         self._fetch_targets = None
 
-    def load(self, inference_path):
+    def load_inference(self, inference_path):
         """inference模型加载"""
         [self._inference_program, self._feed_target_names, self._fetch_targets] = \
             fluid.io.load_inference_model(dirname=inference_path, executor=self._exe)
@@ -52,7 +41,31 @@ class PaddlePretrainedModel(PaddleModel):
 
     def __init__(self, use_gpu=False):
         super(PaddlePretrainedModel, self).__init__(use_gpu)
-        self._main_program = self.model()
+        # 数据读取器
+        self.reader = None
+        # 模型
+        self.model = None
+
+    def init_params(self, init_checkpoint_path=None, init_pretrained_params_path=None):
+        """初始化参数"""
+        init_checkpoint_path and self.load_checkpoint(init_checkpoint_path=init_checkpoint_path)
+        (init_pretrained_params_path and not init_checkpoint_path) \
+        and self.load_pretrained_params(pretrained_params_path=init_pretrained_params_path)
+
+    def create_model(self):
+        """模型创建
+
+        :return
+            reader: 数据读取器"""
+        raise NotImplementedError
+
+    def finetune(self):
+        """模型微调"""
+        raise NotImplemented
+
+    def train(self, *args, **kwargs):
+        """模型训练"""
+        raise NotImplementedError
 
     def load_checkpoint(self, init_checkpoint_path, use_fp16=False):
         """加载checkpoint"""
@@ -109,5 +122,3 @@ class PaddlePretrainedModel(PaddleModel):
                                                                  ".master")
                 if master_param_var is not None:
                     master_param_var.get_tensor().set(data, self._exe.place)
-
-

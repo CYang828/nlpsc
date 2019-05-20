@@ -33,7 +33,7 @@ class PaddleLACInferModel(PaddleInferModel):
         self._load_dataset()
         pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/lac-inference/')
-        self.load(pretrained_path)
+        self.load_inference(pretrained_path)
 
     def _load_dataset(self):
         id2word_dict = dict([(str(word_id), word) for word, word_id in self._reader.vocab.items()])
