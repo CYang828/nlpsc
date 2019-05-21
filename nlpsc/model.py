@@ -1,6 +1,7 @@
 # encoding:utf-8
 
 import os
+from contextlib import contextmanager
 
 import numpy as np
 import paddle.fluid as fluid
@@ -37,20 +38,32 @@ class PaddleInferModel(PaddleModel):
 
 
 class PaddlePretrainedModel(PaddleModel):
-    """paddle预训练模型基类"""
+    """paddle预训练模型基类
 
-    def __init__(self, use_gpu=False):
+    generator：用来真实读取，组装，转换，batch的组件，需要用户针对不同的任务定制
+    reader: 用来进行数据切分，转换成模型需要类型的抽象组件
+    """
+
+    def __init__(self, use_gpu=False, init_checkpoint_path=None, init_pretrained_params_path=None):
         super(PaddlePretrainedModel, self).__init__(use_gpu)
+        # 数据生成器
+        self.generator = None
         # 数据读取器
         self.reader = None
         # 模型
         self.model = None
+        # 模型program
+        self.main_program = fluid.Program()
+        self.startup_program = fluid.Program()
+        # 模型参数初始化
+        self.init_checkpoint_path = init_checkpoint_path
+        self.init_pretrained_params_path = init_pretrained_params_path
 
-    def init_params(self, init_checkpoint_path=None, init_pretrained_params_path=None):
+    def init_params(self):
         """初始化参数"""
-        init_checkpoint_path and self.load_checkpoint(init_checkpoint_path=init_checkpoint_path)
-        (init_pretrained_params_path and not init_checkpoint_path) \
-        and self.load_pretrained_params(pretrained_params_path=init_pretrained_params_path)
+        self.init_checkpoint_path and self.load_checkpoint(init_checkpoint_path=self.init_checkpoint_path)
+        (self.init_pretrained_params_path and not self.init_checkpoint_path) \
+        and self.load_pretrained_params(pretrained_params_path=self.init_pretrained_params_path)
 
     def create_model(self):
         """模型创建
@@ -60,8 +73,18 @@ class PaddlePretrainedModel(PaddleModel):
         raise NotImplementedError
 
     def finetune(self):
-        """模型微调"""
-        raise NotImplemented
+        obj = self
+
+        class Finetune(object):
+            def __enter__(self):
+                with fluid.program_guard(obj.main_program, obj.startup_program):
+                    with fluid.unique_name.guard():
+                        obj.model = obj.create_model()
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                obj.init_params()
+
+        return Finetune()
 
     def train(self, *args, **kwargs):
         """模型训练"""

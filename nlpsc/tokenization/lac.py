@@ -8,7 +8,7 @@ from ..util.python import to_str
 from ..model import PaddleInferModel
 from ..util.file import get_default_path
 from ..representation.ernie.util import split_text
-from ..representation.ernie.reader import SequenceLabelReader
+from ..representation.ernie.reader import SequenceLabelGenerator
 
 
 class PaddleLACInferModel(PaddleInferModel):
@@ -24,12 +24,12 @@ class PaddleLACInferModel(PaddleInferModel):
         self._random_seed = random_seed
         self._max_seq_len = max_seq_len
         self._do_lower_case = do_lower_case
-        self._reader = SequenceLabelReader(vocab_path=self._vocab_path,
-                                           label_map_config=self._label_map_config,
-                                           max_seq_len=self._max_seq_len,
-                                           do_lower_case=self._do_lower_case,
-                                           in_tokens=False,
-                                           random_seed=self._random_seed)
+        self._reader = SequenceLabelGenerator(vocab_path=self._vocab_path,
+                                              label_map_config=self._label_map_config,
+                                              max_seq_len=self._max_seq_len,
+                                              do_lower_case=self._do_lower_case,
+                                              in_tokens=False,
+                                              random_seed=self._random_seed)
         self._load_dataset()
         pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/lac-inference/')

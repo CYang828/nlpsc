@@ -1,7 +1,5 @@
 # encoding:utf-8
 
-import paddle.fluid as fluid
-
 
 class Reader(object):
     """数据读取器"""

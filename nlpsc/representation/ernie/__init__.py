@@ -9,7 +9,7 @@ from ...util.file import get_default_path
 from .ernie import ErnieModel, ErnieConfig
 from ...representation.ernie.util import split_text
 from ...model import PaddleInferModel, PaddlePretrainedModel
-from .reader import BaseReader, ClassifyReader, SequenceLabelReader, ExtractEmbeddingReader
+from .reader import BaseGenerator, ClassifyGenerator, SequenceLabelGenerator, ExtractEmbeddingGenerator
 
 
 class PaddleErnieInferModel(PaddleInferModel):
@@ -21,9 +21,9 @@ class PaddleErnieInferModel(PaddleInferModel):
         self._vocab_path = get_default_path('ernie/vocab.txt')
         self._max_seq_len = max_seq_len
         self._do_lower_case = do_lower_case
-        self._reader = ExtractEmbeddingReader(vocab_path=self._vocab_path,
-                                              max_seq_len=max_seq_len,
-                                              do_lower_case=do_lower_case)
+        self._reader = ExtractEmbeddingGenerator(vocab_path=self._vocab_path,
+                                                 max_seq_len=max_seq_len,
+                                                 do_lower_case=do_lower_case)
         pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/ernie-inference/')
         self.load_inference(pretrained_path)
@@ -72,19 +72,20 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
                  init_checkpoint_path=None, init_pretrained_params_path=None, max_seq_len=512):
         self.ernie_config_path = ernie_config_path if ernie_config_path \
             else get_default_path('ernie/ernie_config.json')
-        self._dtype = 'float16' if use_fp16 else 'float32'
+        self.use_fp16 = use_fp16
         self.max_seq_len = max_seq_len
         super(PaddleErniePretrainedModel, self).__init__(use_gpu, init_checkpoint_path, init_pretrained_params_path)
 
-    def create_reader(self):
+    def create_reader(self, generator):
         """创建文件读取器"""
+        self.generator = generator
         pyreader = fluid.layers.py_reader(
             capacity=50,
             shapes=[[-1, self.max_seq_len, 1], [-1, self.max_seq_len, 1],
                     [-1, self.max_seq_len, 1], [-1, self.max_seq_len, 1], [-1, 1]],
             dtypes=['int64', 'int64', 'int64', 'float', 'int64'],
             lod_levels=[0, 0, 0, 0, 0],
-            name='ernie reader',
+            name='ernie_reader',
             use_double_buffer=True)
 
         src_ids, sent_ids, pos_ids, input_mask, seq_lens = fluid.layers.read_file(pyreader)
@@ -100,21 +101,23 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
             raise NLPSCError
 
         ernie_config = ErnieConfig(self.ernie_config_path)
+        print(self.reader.src_ids)
         ernie_model = ErnieModel(
             src_ids=self.reader.src_ids,
             position_ids=self.reader.pos_ids,
             sentence_ids=self.reader.sent_ids,
             input_mask=self.reader.input_mask,
-            config=ernie_config)
+            config=ernie_config,
+            use_fp16=self.use_fp16)
         return ernie_model
 
-    def train(self):
-        pass
-
-    def infer(self):
+    def train(self, epoch, lr=None, save_inference=False, save_checkpoint=False):
         pass
 
     def evaluate(self):
+        pass
+
+    def infer(self):
         pass
 
     def bulletin_board(self):

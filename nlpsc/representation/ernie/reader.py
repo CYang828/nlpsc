@@ -16,7 +16,7 @@ from . import tokenization
 from .padding import pad_batch_data
 
 
-class BaseReader(object):
+class BaseGenerator(object):
     """BaseReader for classify and sequence labeling task"""
     def __init__(self,
                  vocab_path,
@@ -219,11 +219,11 @@ class BaseReader(object):
         return erine_inputs
 
 
-class ClassifyReader(BaseReader):
+class ClassifyGenerator(BaseGenerator):
     """ClassifyReader"""
     def _read_tsv(self, input_file, quotechar=None):
         """Reads a tab separated value file."""
-        with open(input_file, "r") as f:
+        with open(input_file, "r", encoding='utf-8') as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
             headers = next(reader)
             text_indices = [
@@ -263,7 +263,7 @@ class ClassifyReader(BaseReader):
         return return_list
 
 
-class SequenceLabelReader(BaseReader):
+class SequenceLabelGenerator(BaseGenerator):
     """SequenceLabelReader"""
     def _pad_batch_records(self, batch_records):
         batch_token_ids = [record.token_ids for record in batch_records]
@@ -350,7 +350,7 @@ class SequenceLabelReader(BaseReader):
         return erine_inputs
 
 
-class ExtractEmbeddingReader(BaseReader):
+class ExtractEmbeddingGenerator(BaseGenerator):
     """ExtractEmbeddingReader"""
     def _pad_batch_records(self, batch_records):
         batch_token_ids = [record.token_ids for record in batch_records]
