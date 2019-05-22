@@ -2,7 +2,7 @@
 
 import time
 
-from .corpus import Corpus
+from .dataset import Dataset
 from .util.file import get_files
 from .document import file2document
 from .util.aio import AIOPoolWrapper
@@ -90,7 +90,7 @@ class NLPShortcut(NLPShortcutCore):
 
     @aio
     @producer(topic="load_corpus_from_file")
-    def __load_corpus_from_file(self, fin, lang='zh', fn=None) -> Corpus:
+    def __load_corpus_from_file(self, fin, lang='zh', fn=None) -> Dataset:
         """从文件或文件夹中加载语料库
 
         :argument
@@ -112,7 +112,7 @@ class NLPShortcut(NLPShortcutCore):
 
     @aio
     @producer(topic='load_corpus_from_dump')
-    def __load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Corpus:
+    def __load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Dataset:
         """从dump的文件中加载语料库
 
         :argument

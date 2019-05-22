@@ -8,8 +8,8 @@ from ...error import NLPSCError
 from ...util.file import get_default_path
 from .ernie import ErnieModel, ErnieConfig
 from ...representation.ernie.util import split_text
-from ...model import PaddleInferModel, PaddlePretrainedModel
-from .reader import BaseGenerator, ClassifyGenerator, SequenceLabelGenerator, ExtractEmbeddingGenerator
+from ...model import PaddleInferModel, PaddlePretrainedModel, modelcontext
+from .transformer import ErnieBaseTransformer, ErnieClassifyTransformer, SequenceLabelTransformer, ErnieExtractEmbeddingTransformer
 
 
 class PaddleErnieInferModel(PaddleInferModel):
@@ -21,9 +21,9 @@ class PaddleErnieInferModel(PaddleInferModel):
         self._vocab_path = get_default_path('ernie/vocab.txt')
         self._max_seq_len = max_seq_len
         self._do_lower_case = do_lower_case
-        self._reader = ExtractEmbeddingGenerator(vocab_path=self._vocab_path,
-                                                 max_seq_len=max_seq_len,
-                                                 do_lower_case=do_lower_case)
+        self._reader = ErnieExtractEmbeddingTransformer(vocab_path=self._vocab_path,
+                                                        max_seq_len=max_seq_len,
+                                                        do_lower_case=do_lower_case)
         pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/ernie-inference/')
         self.load_inference(pretrained_path)
@@ -76,6 +76,7 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
         self.max_seq_len = max_seq_len
         super(PaddleErniePretrainedModel, self).__init__(use_gpu, init_checkpoint_path, init_pretrained_params_path)
 
+    @modelcontext
     def create_reader(self, generator):
         """创建文件读取器"""
         self.generator = generator
@@ -94,6 +95,7 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
         self.reader = ernie_reader
         return ernie_reader
 
+    @modelcontext
     def create_model(self):
         """定义ernie网络"""
         if not self.reader:
@@ -101,7 +103,6 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
             raise NLPSCError
 
         ernie_config = ErnieConfig(self.ernie_config_path)
-        print(self.reader.src_ids)
         ernie_model = ErnieModel(
             src_ids=self.reader.src_ids,
             position_ids=self.reader.pos_ids,
@@ -122,3 +123,4 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
 
     def bulletin_board(self):
         pass
+

@@ -7,25 +7,25 @@ from .error import NLPSCError
 from .document import Document
 from .util.tool import uniqueid
 from .util.file import gen_filename
+from .core import NLPShortcutCore, producer, aio, cpu
 from .util.python import get_runtime_function_name
-from .core import NLPShortcutCore, producer, aio, cpu, wait
 
 
-class Corpus(object):
+class Dataset(object):
     """用来做annotations"""
     pass
 
 
-class Corpus(NLPShortcutCore):
-    """语料集对象"""
+class Dataset(NLPShortcutCore):
+    """数据集对象"""
 
     def __init__(self, name=None):
-        super(Corpus, self).__init__()
+        super(Dataset, self).__init__()
 
         self.id = uniqueid()
-        # 文档名称
+        # 数据集名称
         self.name = name if name else self.id
-        # 文档集中文档个数
+        # 数据集中文档个数
         self.size = 0
         self._documents = {}
 
@@ -52,7 +52,7 @@ class Corpus(NLPShortcutCore):
         for document in self.documents:
             yield document
 
-    def sample(self, n=1) -> Corpus:
+    def sample(self, n=1) -> Dataset:
         """随机抽样展示数据"""
 
         if len(self.documents) == 0:
@@ -67,25 +67,25 @@ class Corpus(NLPShortcutCore):
 
     @cpu
     @producer('document_paragraph')
-    def __iter_paragraph(self) -> Corpus:
+    def __iter_paragraph(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer('document_sentence')
-    def __iter_sentence(self) -> Corpus:
+    def __iter_sentence(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer('document_word')
-    def __iter_word(self) -> Corpus:
+    def __iter_word(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer(topic='document_clean')
-    def __iter_clean(self) -> Corpus:
+    def __iter_clean(self) -> Dataset:
         for document in self.consume():
             self.produce(document.clean)
             self.add(document)
@@ -94,14 +94,14 @@ class Corpus(NLPShortcutCore):
 
     @cpu
     @producer('document_preprocess')
-    def __iter_preprocess(self, fn) -> Corpus:
+    def __iter_preprocess(self, fn) -> Dataset:
 
         self.iter_process(self.documents, get_runtime_function_name(), fn)
         return self
 
     @cpu
     @producer(topic='document_tokenize')
-    def __iter_tokenize(self, tokenizer=None, userdict=None) -> Corpus:
+    def __iter_tokenize(self, tokenizer=None, userdict=None) -> Dataset:
         print('start token')
         for document in self.consume():
             self.produce(document.tokenize, tokenizer=tokenizer, userdict=userdict)
@@ -111,7 +111,7 @@ class Corpus(NLPShortcutCore):
 
     @cpu
     @producer(topic='document_stopword')
-    def __iter_stopword(self, stopwordict=None) -> Corpus:
+    def __iter_stopword(self, stopwordict=None) -> Dataset:
         print('document_stopword')
         for document in self.consume():
             self.produce(document.stopword, stopwordict=stopwordict)
@@ -121,7 +121,7 @@ class Corpus(NLPShortcutCore):
 
     @cpu
     @producer(topic='document_represent')
-    def __iter_represent(self) -> Corpus:
+    def __iter_represent(self) -> Dataset:
         for document in self.consume():
             self.produce(document.represent)
             self.add(document)
@@ -129,7 +129,7 @@ class Corpus(NLPShortcutCore):
 
     @cpu
     @producer('document_literal')
-    def __iter_literal(self, word_delimiter=' ') -> Corpus:
+    def __iter_literal(self, word_delimiter=' ') -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name(),
                           word_delimiter=word_delimiter)
         return self
@@ -137,7 +137,7 @@ class Corpus(NLPShortcutCore):
     @aio
     @producer('document_dump')
     def __iter_dump(self, outdir, is_structured=False, prefix="dump", suffix="nlpsc",
-                    paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' ') -> Corpus:
+                    paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' ') -> Dataset:
         # 如果文件已经存在，删除该文件
         dump_filename = gen_filename(self.name, prefix=prefix, suffix=suffix)
         path = os.path.join(outdir, dump_filename)
@@ -154,3 +154,4 @@ class Corpus(NLPShortcutCore):
     @property
     def documents(self):
         return list(self._documents.values())
+

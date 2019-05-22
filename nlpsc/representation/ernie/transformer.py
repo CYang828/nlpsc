@@ -14,9 +14,10 @@ import numpy as np
 
 from . import tokenization
 from .padding import pad_batch_data
+from ...transformer import Transformer
 
 
-class BaseGenerator(object):
+class ErnieBaseTransformer(Transformer):
     """BaseReader for classify and sequence labeling task"""
     def __init__(self,
                  vocab_path,
@@ -219,7 +220,7 @@ class BaseGenerator(object):
         return erine_inputs
 
 
-class ClassifyGenerator(BaseGenerator):
+class ErnieClassifyTransformer(ErnieBaseTransformer):
     """ClassifyReader"""
     def _read_tsv(self, input_file, quotechar=None):
         """Reads a tab separated value file."""
@@ -263,7 +264,7 @@ class ClassifyGenerator(BaseGenerator):
         return return_list
 
 
-class SequenceLabelGenerator(BaseGenerator):
+class SequenceLabelTransformer(ErnieBaseTransformer):
     """SequenceLabelReader"""
     def _pad_batch_records(self, batch_records):
         batch_token_ids = [record.token_ids for record in batch_records]
@@ -350,7 +351,7 @@ class SequenceLabelGenerator(BaseGenerator):
         return erine_inputs
 
 
-class ExtractEmbeddingGenerator(BaseGenerator):
+class ErnieExtractEmbeddingTransformer(ErnieBaseTransformer):
     """ExtractEmbeddingReader"""
     def _pad_batch_records(self, batch_records):
         batch_token_ids = [record.token_ids for record in batch_records]

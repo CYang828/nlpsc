@@ -38,7 +38,7 @@ class Document(object):
     _represent = Representation()
     _stopwordict = []
 
-    def __init__(self, text, lang, path=None, name=None):
+    def __init__(self, text, lang, path=None, name=None, dataset=None):
         if lang not in self.support_langs:
             print('langs {} can be supported now, please check it'.format(self.support_langs))
             raise NLPSCError
@@ -63,6 +63,11 @@ class Document(object):
         self._sentences = []
         # 词
         self._words = []
+        # 字符
+        self._chars = []
+
+        # 文档所属数据集
+        self.dataset = dataset
 
     def __str__(self):
         if self._words:

@@ -1,10 +1,21 @@
 # encoding:utf-8
 
 import os
-from contextlib import contextmanager
+from functools import wraps
 
 import numpy as np
 import paddle.fluid as fluid
+
+
+def modelcontext(fn):
+    """模型上下文装饰器，用来定义模型范围"""
+
+    @wraps(fn)
+    def wrapper(obj, *args, **kwargs):
+        with fluid.program_guard(obj.main_program, obj.startup_program):
+            r = fn(obj, *args, **kwargs)
+        return r
+    return wrapper
 
 
 class PaddleModel(object):
@@ -77,9 +88,8 @@ class PaddlePretrainedModel(PaddleModel):
 
         class Finetune(object):
             def __enter__(self):
-                with fluid.program_guard(obj.main_program, obj.startup_program):
-                    with fluid.unique_name.guard():
-                        obj.model = obj.create_model()
+                obj.model = obj.create_model()
+                fluid.program_guard(obj.main_program, obj.startup_program).__enter__()
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 obj.init_params()
@@ -103,7 +113,7 @@ class PaddlePretrainedModel(PaddleModel):
         fluid.io.load_vars(
             self._exe,
             init_checkpoint_path,
-            main_program=self._main_program,
+            main_program=self.main_program,
             predicate=existed_persitables)
         print("Load model from {}".format(init_checkpoint_path))
 
@@ -125,7 +135,7 @@ class PaddlePretrainedModel(PaddleModel):
         fluid.io.load_vars(
             self._exe,
             pretrained_params_path,
-            main_program=self._main_program,
+            main_program=self.main_program,
             predicate=existed_params)
         print("Load pretraining parameters from {}.".format(
             pretrained_params_path))
@@ -135,7 +145,7 @@ class PaddlePretrainedModel(PaddleModel):
 
     def _cast_fp32_to_fp16(self):
         print("Cast parameters to float16 data format.")
-        for param in self._main_program.global_block().all_parameters():
+        for param in self.main_program.global_block().all_parameters():
             if not param.name.endswith(".master"):
                 param_t = fluid.global_scope().find_var(param.name).get_tensor()
                 data = np.array(param_t)

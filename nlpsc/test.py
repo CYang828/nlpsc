@@ -36,7 +36,7 @@
 import os
 
 import paddle.fluid as fluid
-from nlpsc.representation.ernie import PaddleErniePretrainedModel, ClassifyGenerator
+from nlpsc.representation.ernie import PaddleErniePretrainedModel, ErnieClassifyTransformer
 
 # 定义一个模型
 ernie_model = PaddleErniePretrainedModel()
@@ -44,34 +44,34 @@ ernie_model = PaddleErniePretrainedModel()
 # 定义一个数据读取器
 # 由于任务的不同，数据的形式会有差别，所以这里需要灵活的可定制
 # 先定义一个数据生成器，然后将生成器传给reader创建就好
-generator = ClassifyGenerator('default/ernie/vocab.txt',
-                              label_map_config=None,
-                              max_seq_len=512,
-                              do_lower_case=True,
-                              in_tokens=False,
-                              random_seed=None).data_generator(os.path.abspath('test.tsv'),
-                                                               batch_size=10,
-                                                               epoch=1,
-                                                               shuffle=False)
+generator = ErnieClassifyTransformer('default/ernie/vocab.txt',
+                                     label_map_config=None,
+                                     max_seq_len=512,
+                                     do_lower_case=True,
+                                     in_tokens=False,
+                                     random_seed=None).data_generator(os.path.abspath('test.tsv'),
+                                                                      batch_size=10,
+                                                                      epoch=1,
+                                                                      shuffle=False)
 ernie_model.create_reader(generator)
 
 # 定义finetune的网络
-with ernie_model.finetune() as v:
-    # cls_feats = ernie_model.model.get_pooled_output()
-    # cls_feats = fluid.layers.dropout(
-    #     x=cls_feats,
-    #     dropout_prob=0.1,
-    #     dropout_implementation="upscale_in_train")
-    # logits = fluid.layers.fc(
-    #     input=cls_feats,
-    #     size=2,
-    #     param_attr=fluid.ParamAttr(
-    #         name="cls_out_w",
-    #         initializer=fluid.initializer.TruncatedNormal(scale=0.02)),
-    #     bias_attr=fluid.ParamAttr(
-    #         name="cls_out_b", initializer=fluid.initializer.Constant(0.)))
+with ernie_model.finetune():
+    cls_feats = ernie_model.model.get_pooled_output()
+    cls_feats = fluid.layers.dropout(
+        x=cls_feats,
+        dropout_prob=0.1,
+        dropout_implementation="upscale_in_train")
+    logits = fluid.layers.fc(
+        input=cls_feats,
+        size=2,
+        param_attr=fluid.ParamAttr(
+            name="cls_out_w",
+            initializer=fluid.initializer.TruncatedNormal(scale=0.02)),
+        bias_attr=fluid.ParamAttr(
+            name="cls_out_b", initializer=fluid.initializer.Constant(0.)))
 
-    print(ernie_model.main_program.to_string(True))
+print(ernie_model.main_program.to_string(True))
 
 # 可视化当前网络 -> 方便校对,尤其是对输入输入出的描述，要清晰，易懂
 # 执行预模型相关的操作
