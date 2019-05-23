@@ -28,6 +28,7 @@ class Vocabulary(object):
             vocab[token] = int(index)
         self.vocab = vocab
         self.inv_vocab = {v: k for k, v in vocab.items()}
+        return self
 
     def auto_from_dataset(self, dataset: object) -> object:
         """根据当前的数据集生成"""

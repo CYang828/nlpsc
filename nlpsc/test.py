@@ -49,9 +49,7 @@ generator = ErnieClassifyTransformer('default/ernie/vocab.txt',
                                      max_seq_len=512,
                                      do_lower_case=True,
                                      in_tokens=False,
-                                     random_seed=None).data_generator(os.path.abspath('test.tsv'),
-                                                                      batch_size=10,
-                                                                      epoch=1,
+                                     random_seed=None).data_generator(os.path.abspath('test.tsv'), epoch=1,
                                                                       shuffle=False)
 ernie_model.create_reader(generator)
 

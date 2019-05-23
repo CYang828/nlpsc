@@ -15,54 +15,92 @@ import numpy as np
 from . import tokenization
 from .padding import pad_batch_data
 from ...transformer import Transformer
+from ...vocabulary import Vocabulary
 
 
 class ErnieBaseTransformer(Transformer):
     """BaseReader for classify and sequence labeling task"""
     def __init__(self,
+                 dataset,
                  vocab_path,
                  label_map_config=None,
                  max_seq_len=512,
                  do_lower_case=True,
                  in_tokens=False,
-                 random_seed=None):
+                 random_seed=None,
+                 batch_size=1,
+                 epoch=1,
+                 shuffle=False):
+        super(ErnieBaseTransformer, self).__init__(dataset, vocab_path, do_lower_case, random_seed,
+                                                   batch_size=batch_size, epoch=epoch, shuffle=shuffle)
         self.max_seq_len = max_seq_len
-        self.tokenizer = tokenization.FullTokenizer(
-            vocab_file=vocab_path, do_lower_case=do_lower_case)
-        self.vocab = self.tokenizer.vocab
+        self.vocab = Vocabulary().load_vocab(vocab_path)
+        self.tokenizer = tokenization.FullTokenizer(self.vocab, do_lower_case=do_lower_case)
+
+        # TODO: wtm
+        self.in_tokens = in_tokens
+
+        # padding过程中使用的标签
         self.pad_id = self.vocab["[PAD]"]
         self.cls_id = self.vocab["[CLS]"]
         self.sep_id = self.vocab["[SEP]"]
-        self.in_tokens = in_tokens
-
-        np.random.seed(random_seed)
 
         self.current_example = 0
         self.current_epoch = 0
         self.num_examples = 0
 
+        # 加载用户自定义标签
+        # TODO: wtm
         if label_map_config:
             with open(label_map_config) as f:
                 self.label_map = json.load(f)
         else:
             self.label_map = None
 
+    @staticmethod
+    def document2example(document):
+        pass
+
+    def data_generator(self):
+        """return generator which yields batch data for pyreader"""
+
+        for batch_documents in self._batch_data_generator():
+
+        for epoch_index in self._epoch(epoch):
+            if phase == "train":
+                self.current_example = 0
+                self.current_epoch = epoch_index
+            if shuffle:
+                documents = self.shuffle()
+            for batch_data in self._prepare_batch_data(
+                    examples, batch_size, phase=phase):
+                yield batch_data
+
+    def _prepare_batch_data(self, examples, batch_size, phase=None):
+        """generate batch records"""
+        batch_records, max_len = [], 0
+        for index, example in enumerate(examples):
+            if phase == "train":
+                self.current_example = index
+            record = self._convert_example_to_record(example, self.max_seq_len,
+                                                     self.tokenizer)
+            max_len = max(max_len, len(record.token_ids))
+            if self.in_tokens:
+                to_append = (len(batch_records) + 1) * max_len <= batch_size
+            else:
+                to_append = len(batch_records) < batch_size
+            if to_append:
+                batch_records.append(record)
+            else:
+                yield self._pad_batch_records(batch_records)
+                batch_records, max_len = [record], len(record.token_ids)
+
+        if batch_records:
+            yield self._pad_batch_records(batch_records)
+
     def get_train_progress(self):
         """Gets progress for training phase."""
         return self.current_example, self.current_epoch
-
-    def _read_tsv(self, input_file, quotechar=None):
-        """Reads a tab separated value file."""
-        with open(input_file, "r") as f:
-            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-            headers = next(reader)
-            Example = namedtuple('Example', headers)
-
-            examples = []
-            for line in reader:
-                example = Example(*line)
-                examples.append(example)
-            return examples
 
     def _truncate_seq_pair(self, tokens_a, tokens_b, max_length):
         """Truncates a sequence pair in place to the maximum length."""
@@ -159,55 +197,10 @@ class ErnieBaseTransformer(Transformer):
             qid=qid)
         return record
 
-    def _prepare_batch_data(self, examples, batch_size, phase=None):
-        """generate batch records"""
-        batch_records, max_len = [], 0
-        for index, example in enumerate(examples):
-            if phase == "train":
-                self.current_example = index
-            record = self._convert_example_to_record(example, self.max_seq_len,
-                                                     self.tokenizer)
-            max_len = max(max_len, len(record.token_ids))
-            if self.in_tokens:
-                to_append = (len(batch_records) + 1) * max_len <= batch_size
-            else:
-                to_append = len(batch_records) < batch_size
-            if to_append:
-                batch_records.append(record)
-            else:
-                yield self._pad_batch_records(batch_records)
-                batch_records, max_len = [record], len(record.token_ids)
-
-        if batch_records:
-            yield self._pad_batch_records(batch_records)
-
     def get_num_examples(self, input_file):
         """return total number of examples"""
         examples = self._read_tsv(input_file)
         return len(examples)
-
-    def data_generator(self,
-                       input_file,
-                       batch_size,
-                       epoch,
-                       shuffle=True,
-                       phase=None):
-        """return generator which yields batch data for pyreader"""
-        examples = self._read_tsv(input_file)
-
-        def _wrapper():
-            for epoch_index in range(epoch):
-                if phase == "train":
-                    self.current_example = 0
-                    self.current_epoch = epoch_index
-                if shuffle:
-                    np.random.shuffle(examples)
-
-                for batch_data in self._prepare_batch_data(
-                        examples, batch_size, phase=phase):
-                    yield batch_data
-
-        return _wrapper
 
     def convert_example_to_erine_input(self, texts):
         Example = namedtuple('Example', ['text_a', 'label'])

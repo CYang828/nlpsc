@@ -1,5 +1,6 @@
 # encoding:utf-8
 
+import csv
 import time
 
 from .dataset import Dataset
@@ -109,6 +110,22 @@ class NLPShortcut(NLPShortcutCore):
                          encoding='utf-8-sig',
                          lang=lang)
         print('load files finished, get a corpus!')
+
+    @aio
+    @producer(topic="load_corpus_from_tsv")
+    def __load_corpus_from_tsv(self, fin, lang='zh', quotechar=None):
+        """Reads a tab separated value file."""
+        with open(fin, "r") as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            headers = next(reader)
+            # TODO：这里返回dataset
+            # Example = namedtuple('Example', headers)
+            #
+            # examples = []
+            # for line in reader:
+            #     example = Example(*line)
+            #     examples.append(example)
+            # return examples
 
     @aio
     @producer(topic='load_corpus_from_dump')

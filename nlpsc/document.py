@@ -7,7 +7,7 @@ from .error import NLPSCError
 from .util.tool import uniqueid
 from .tokenization import Tokenization
 from .util.file import aio_read_file
-from .preprocessing.data import literal_clean
+from .preprocessing.text import clean_text
 from .util.file import aio_write_file
 from .representation import Representation
 
@@ -82,7 +82,7 @@ class Document(object):
 
     def paragraph(self):
         """文章段落切割"""
-        self.paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
+        self._paragraphs = [Paragraph(text) for text in self.text.split('\n') if text]
         return self
 
     def sentence(self):
@@ -100,7 +100,7 @@ class Document(object):
 
     def clean(self):
         """文档字面量清洗"""
-        self._proceed = literal_clean(self.text)
+        self._proceed = clean_text(self.text)
         return self
 
     def preprocess(self, fn):
