@@ -9,7 +9,8 @@ from ...util.file import get_default_path
 from .ernie import ErnieModel, ErnieConfig
 from ...representation.ernie.util import split_text
 from ...model import PaddleInferModel, PaddlePretrainedModel, modelcontext
-from .transformer import ErnieBaseTransformer, ErnieClassifyTransformer, SequenceLabelTransformer, ErnieExtractEmbeddingTransformer
+from .transformer import ErnieBaseTransformer, ErnieClassifyTransformer, SequenceLabelTransformer, \
+    ErnieExtractEmbeddingTransformer
 
 
 class PaddleErnieInferModel(PaddleInferModel):

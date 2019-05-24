@@ -8,7 +8,6 @@ from ..util.python import to_str
 from ..model import PaddleInferModel
 from ..util.file import get_default_path
 from ..representation.ernie.util import split_text
-from ..representation.ernie.transformer import SequenceLabelTransformer
 
 
 class PaddleLACInferModel(PaddleInferModel):
@@ -24,12 +23,13 @@ class PaddleLACInferModel(PaddleInferModel):
         self._random_seed = random_seed
         self._max_seq_len = max_seq_len
         self._do_lower_case = do_lower_case
-        self._reader = SequenceLabelTransformer(vocab_path=self._vocab_path,
-                                                label_map_config=self._label_map_config,
-                                                max_seq_len=self._max_seq_len,
-                                                do_lower_case=self._do_lower_case,
-                                                in_tokens=False,
-                                                random_seed=self._random_seed)
+        from ..representation.ernie.transformer import SequenceLabelTransformer
+        self.transformer = SequenceLabelTransformer(vocab_path=self._vocab_path,
+                                                    label_map_config=self._label_map_config,
+                                                    max_seq_len=self._max_seq_len,
+                                                    do_lower_case=self._do_lower_case,
+                                                    in_tokens=False,
+                                                    random_seed=self._random_seed)
         self._load_dataset()
         pretrained_path = pretrained_model if pretrained_model\
             else get_default_path('pretrained-models/lac-inference/')
@@ -50,7 +50,13 @@ class PaddleLACInferModel(PaddleInferModel):
             results
         """
 
-        erine_input = self._reader.convert_example_to_erine_input(texts)
+        from ..dataset import Dataset
+        from ..document import Document
+        dataset = Dataset()
+        for text in texts:
+            dataset.add(Document(text))
+        self.transformer.dataset = dataset
+        erine_input = self.transformer.example2input(texts)
         words, crf_decode = self._exe.run(self._inference_program,
                                           feed={self._feed_target_names[0]: erine_input[0],
                                                 self._feed_target_names[1]: erine_input[1],

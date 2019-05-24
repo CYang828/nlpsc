@@ -34,8 +34,8 @@ class Document(object):
     """文章对象"""
 
     support_langs = ('zh', 'en')
-    _tokenizer = Tokenization()
-    _represent = Representation()
+    # _tokenizer = Tokenization()
+    # _represent = Representation()
     _stopwordict = []
 
     def __init__(self, text, lang, path=None, name=None, dataset=None):
@@ -46,6 +46,8 @@ class Document(object):
         self.id = uniqueid()
         # 文档名称
         self.name = name if name else self.id
+        # 文档标签
+        self.label = None
         # 文档路径
         self.path = path
         # 文档中保存的字面量

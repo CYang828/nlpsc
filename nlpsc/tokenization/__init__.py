@@ -1,16 +1,14 @@
 # encoding:utf-8
 
-"""
-使用paddle的lac可以进一步提升分词、词性标注、命名识别的准确性
-TODO：后续集成
-"""
-
-import jieba
 
 from ..tokenization.lac import PaddleLACInferModel
 
 
 class Tokenization(object):
+    """默认使用lac进行分词
+
+    如果想使用jieba：请执行`pip install jieba`
+    如果想使用pkuseg：请执行`pip install pkuseg`"""
 
     tokenizer_option = ('jieba', 'pkuseg', 'lac')
 
@@ -21,8 +19,11 @@ class Tokenization(object):
         tokenizer = setting.get('tokenizer', 'lac')
         userdict = setting.get('userdict')
         parallel = setting.get('parallel', 1)
-        print(tokenizer)
         if tokenizer == 'jieba':
+            try:
+                import jieba
+            except ModuleNotFoundError:
+                print('if you want to use jieba tokenizer, please use `pip install jieba` first')
             self._tokenizer = jieba
             if userdict:
                 jieba.load_userdict(userdict)
@@ -31,7 +32,7 @@ class Tokenization(object):
         elif tokenizer == 'pkuseg':
             try:
                 import pkuseg
-            except ModuleNotFoundError as e:
+            except ModuleNotFoundError:
                 print('if you want to use pkuseg tokenizer, please use `pip install pkuseg` first')
             self._tokenizer = pkuseg.pkuseg(user_dict=userdict)
         elif tokenizer == 'lac':
@@ -40,11 +41,5 @@ class Tokenization(object):
     def cut(self, literal):
         return self._tokenizer.cut(literal)
 
-
-if __name__ == '__main__':
-    p = Tokenization()
-    p.configuration(tokenizer='pkuseg')
-    print(p.cut('一元二次方程在初中数学中有着很重要的地位'))
-    print(p.cut('this is me'))
 
 

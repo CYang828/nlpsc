@@ -9,6 +9,7 @@ from .util.tool import uniqueid
 from .util.file import gen_filename
 from .core import NLPShortcutCore, producer, aio, cpu
 from .util.python import get_runtime_function_name
+from .util.file import aio_write_file
 
 
 class Dataset(object):
@@ -28,6 +29,7 @@ class Dataset(NLPShortcutCore):
         # 数据集中文档个数
         self.size = 0
         self._documents = {}
+        self.header = None
 
     def __iter__(self):
         return self.iter()
@@ -64,6 +66,15 @@ class Dataset(NLPShortcutCore):
                 i = list(self._documents.keys())[idx]
                 print(self._documents[i])
         return self
+
+    def set_header(self, header):
+        """设置dump成文件时的header"""
+        self.header = '\t'.join(header)
+
+    async def write_header(self, output_dir, filename):
+        if self.header:
+            header = '\t'.join(self.header)
+            await aio_write_file(output_dir, filename, header, pattern='a+')
 
     @cpu
     @producer('document_paragraph')
@@ -136,13 +147,18 @@ class Dataset(NLPShortcutCore):
 
     @aio
     @producer('document_dump')
-    def __iter_dump(self, outdir, is_structured=False, prefix="dump", suffix="nlpsc",
+    def __iter_dump(self, outdir, header=None, is_structured=False, prefix="dump", suffix="nlpsc",
                     paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' ') -> Dataset:
+
+        if header:
+            self.set_header(header)
+
         # 如果文件已经存在，删除该文件
         dump_filename = gen_filename(self.name, prefix=prefix, suffix=suffix)
         path = os.path.join(outdir, dump_filename)
         if os.path.exists(path):
             os.remove(path)
+        self.produce(self.write_header, outdir, dump_filename)
         for document in self.consume():
             self.produce(document.dump,
                          outdir, dump_filename,

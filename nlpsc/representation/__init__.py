@@ -2,8 +2,6 @@
 
 from ..selector import Selector
 
-from ..representation.ernie import PaddleErnieInferModel
-
 
 class Representation(Selector):
     """文本表示类
@@ -38,4 +36,5 @@ class Representation(Selector):
 
     def _ernie(self):
         """构建ernie对象"""
+        from ..representation.ernie import PaddleErnieInferModel
         return PaddleErnieInferModel(**self._settings)
