@@ -20,8 +20,8 @@ class Transformer(metaclass=abc.ABCMeta):
                      如果不指定值，则每次shuffle的数据顺序都不相同
         in_tokens：是否使用token数来进行batch_size的计算"""
 
-    def __init__(self, dataset=None, vocab_path=None, do_lower_case=True, random_seed=None,
-                 batch_size=1, epoch=1, shuffle=False, in_tokens=False, label_map_config=None):
+    def __init__(self, dataset=None, vocab_path=None, do_lower_case=True,
+                 random_seed=None, in_tokens=False, label_map_config=None):
         self.dataset = dataset
         self.vocab = None
 
@@ -33,9 +33,6 @@ class Transformer(metaclass=abc.ABCMeta):
             self.create_vocab()
 
         self._do_lower_case = do_lower_case
-        self.batch_size = batch_size
-        self.epoch = epoch
-        self.shuffle = shuffle
         self.in_tokens = in_tokens
 
         # 加载用户自定义标签
@@ -68,7 +65,7 @@ class Transformer(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def batch_inputs_generator(self):
+    def batch_inputs_generator(self, batch_size=1, epoch=1, shuffle=False):
         """数据生成器方法（用户自定义）
            需要在子类中实现，此方法必须返回一个生成器"""
 
@@ -97,16 +94,16 @@ class Transformer(metaclass=abc.ABCMeta):
             for document in documents:
                 # 找到本次batch中的最长序列长度
                 max_len = max(max_len, len(document.text))
-                if (len(batch_documents)+1) * max_len > self.batch_size:
+                if (len(batch_documents)+1) * max_len > batch_size:
                     batch_examples = map(self.document2example, batch_documents)
                     batch_inputs = map(self.example2input, batch_examples)
                     yield batch_inputs
                 else:
                     batch_documents.append(document)
         else:
-            batch = documents//batch_size + 1
-            for i in batch:
-                batch_documents = documents[i*i: batch_size*i]
+            batch = len(documents)//batch_size + 1
+            for i in range(batch):
+                batch_documents = documents[i*i: batch_size*(i+1)]
                 batch_examples = map(self.document2example, batch_documents)
                 batch_inputs = map(self.example2input, batch_examples)
                 yield batch_inputs
@@ -118,4 +115,3 @@ class Transformer(metaclass=abc.ABCMeta):
     @staticmethod
     def _shuffle(documents):
         np.random.shuffle(documents)
-

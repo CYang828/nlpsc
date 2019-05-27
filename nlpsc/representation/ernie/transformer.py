@@ -8,6 +8,7 @@ import numpy as np
 from .padding import pad_batch_data
 from ...transformer import Transformer
 from ...tokenization.char_tokenizer import FullTokenizer
+from ...util.python import convert_to_unicode
 
 
 class ErnieBaseTransformer(Transformer):
@@ -19,13 +20,9 @@ class ErnieBaseTransformer(Transformer):
                  max_seq_len=512,
                  do_lower_case=True,
                  in_tokens=False,
-                 random_seed=None,
-                 batch_size=1,
-                 epoch=1,
-                 shuffle=False):
+                 random_seed=None):
         super(ErnieBaseTransformer, self).__init__(dataset=dataset, vocab_path=vocab_path, do_lower_case=do_lower_case,
-                                                   random_seed=random_seed, batch_size=batch_size, epoch=epoch,
-                                                   shuffle=shuffle, in_tokens=in_tokens,
+                                                   random_seed=random_seed, in_tokens=in_tokens,
                                                    label_map_config=label_map_config)
         self.max_seq_len = max_seq_len
         self.tokenizer = FullTokenizer(self.vocab, do_lower_case=do_lower_case)
@@ -124,19 +121,18 @@ class ErnieBaseTransformer(Transformer):
     def _pad_batch_records(self, batch_records):
         pass
 
-    def batch_inputs_generator(self):
+    def batch_inputs_generator(self, batch_size=1, epoch=1, shuffle=False):
         """return generator which yields batch data for pyreader"""
 
-        for batch_records in self._batch_inputs_generator():
-            yield self._pad_batch_records(batch_records)
+        def produce():
+            for batch_records in self._batch_inputs_generator(batch_size, epoch, shuffle):
+                print(batch_records)
+                yield self._pad_batch_records(batch_records)
+        return produce
 
     def document2input(self, document):
         model_input = self._document2input(document)
         return self._pad_batch_records([model_input])
-
-    def get_train_progress(self):
-        """Gets progress for training phase."""
-        return self.current_example, self.current_epoch
 
     @staticmethod
     def _truncate_seq_pair(tokens_a, tokens_b, max_length):
@@ -161,18 +157,13 @@ class ErnieClassifyTransformer(ErnieBaseTransformer):
 
     def document2example(self, document):
         if self.dataset:
-            text_indices = [
-                index for index, h in enumerate(self.dataset.header) if h != "label"
-            ]
             Example = namedtuple('Example', self.dataset.header)
+            print(Example(text_a=document.text, label=document.label))
+            return Example(text_a=document.text, label=document.label)
         else:
-            text_indices = [0]
-            Example = namedtuple('Example', ['text_a'])
-        text = document.text
-        for index, text in enumerate(text):
-            if index in text_indices:
-                text[index] = text.replace(' ', '')
-        return Example(text)
+            Example = namedtuple('Example', ['text_a', 'label'])
+            print(Example(text_a=document.text, label=0))
+            return Example(text_a=document.text, label=0)
 
     def _pad_batch_records(self, batch_records):
         batch_token_ids = [record.token_ids for record in batch_records]
@@ -180,7 +171,7 @@ class ErnieClassifyTransformer(ErnieBaseTransformer):
         batch_position_ids = [record.position_ids for record in batch_records]
         batch_labels = [record.label_id for record in batch_records]
         batch_labels = np.array(batch_labels).astype("int64").reshape([-1, 1])
-
+        print(batch_token_ids, batch_position_ids)
         # padding
         padded_token_ids, input_mask, seq_lens = pad_batch_data(
             batch_token_ids, pad_idx=self.pad_id, return_input_mask=True, return_seq_lens=True)
@@ -225,13 +216,12 @@ class SequenceLabelTransformer(ErnieBaseTransformer):
         ]
         return return_list
 
-    @staticmethod
-    def _reseg_token_label(tokens, labels, tokenizer):
+    def _reseg_token_label(self, tokens, labels):
         assert len(tokens) == len(labels)
         ret_tokens = []
         ret_labels = []
         for token, label in zip(tokens, labels):
-            sub_token = tokenizer.tokenize(token)
+            sub_token = self.tokenizer.tokenize(token)
             if len(sub_token) == 0:
                 continue
             ret_tokens.extend(sub_token)
@@ -246,17 +236,17 @@ class SequenceLabelTransformer(ErnieBaseTransformer):
         assert len(ret_tokens) == len(ret_labels)
         return ret_tokens, ret_labels
 
-    def _convert_example_to_record(self, example, max_seq_length, tokenizer):
-        tokens = tokenization.convert_to_unicode(example.text_a).split(u"")
-        labels = tokenization.convert_to_unicode(example.label).split(u"")
-        tokens, labels = self._reseg_token_label(tokens, labels, tokenizer)
+    def example2input(self, example):
+        tokens = convert_to_unicode(example.text_a).split(u" ")
+        labels = convert_to_unicode(example.label).split(u"") if example.label else ['']
+        tokens, labels = self._reseg_token_label(tokens, labels)
 
-        if len(tokens) > max_seq_length - 2:
-            tokens = tokens[0:(max_seq_length - 2)]
-            labels = labels[0:(max_seq_length - 2)]
+        if len(tokens) > self.max_seq_len - 2:
+            tokens = tokens[0:(self.max_seq_len - 2)]
+            labels = labels[0:(self.max_seq_len - 2)]
 
         tokens = ["[CLS]"] + tokens + ["[SEP]"]
-        token_ids = tokenizer.convert_tokens_to_ids(tokens)
+        token_ids = self.vocab.tokens2ids(tokens)
         position_ids = list(range(len(token_ids)))
         text_type_ids = [0] * len(token_ids)
         no_entity_id = len(self.label_map) - 1
@@ -274,16 +264,6 @@ class SequenceLabelTransformer(ErnieBaseTransformer):
             position_ids=position_ids,
             label_ids=label_ids)
         return record
-
-    def convert_example_to_erine_input(self, texts):
-        Example = namedtuple('Example', ['text_a', 'label'])
-        records = []
-        for text in texts:
-            example = Example(text_a=text, label='')
-            record = self._convert_example_to_record(example, self.max_seq_len, self.tokenizer)
-            records.append(record)
-        erine_inputs = self._pad_batch_records(records)
-        return erine_inputs
 
 
 class ErnieExtractEmbeddingTransformer(ErnieBaseTransformer):

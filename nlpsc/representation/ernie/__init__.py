@@ -78,26 +78,7 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
         super(PaddleErniePretrainedModel, self).__init__(use_gpu, init_checkpoint_path, init_pretrained_params_path)
 
     @modelcontext
-    def create_reader(self, generator):
-        """创建文件读取器"""
-        self.generator = generator
-        pyreader = fluid.layers.py_reader(
-            capacity=50,
-            shapes=[[-1, self.max_seq_len, 1], [-1, self.max_seq_len, 1],
-                    [-1, self.max_seq_len, 1], [-1, self.max_seq_len, 1], [-1, 1]],
-            dtypes=['int64', 'int64', 'int64', 'float', 'int64'],
-            lod_levels=[0, 0, 0, 0, 0],
-            name='ernie_reader',
-            use_double_buffer=True)
-
-        src_ids, sent_ids, pos_ids, input_mask, seq_lens = fluid.layers.read_file(pyreader)
-        ernie_reader = Reader(pyreader, src_ids=src_ids, sent_ids=sent_ids, pos_ids=pos_ids,
-                              input_mask=input_mask, seq_lens=seq_lens)
-        self.reader = ernie_reader
-        return ernie_reader
-
-    @modelcontext
-    def create_model(self):
+    def define_model(self):
         """定义ernie网络"""
         if not self.reader:
             print('please call create reader function first')
@@ -113,15 +94,27 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
             use_fp16=self.use_fp16)
         return ernie_model
 
-    def train(self, epoch, lr=None, save_inference=False, save_checkpoint=False):
-        pass
+    def train(self, epoch, fetch_list=None, return_numpy=False, lr=None, save_inference=False, save_checkpoint=False):
+        """网络训练"""
+        self.reader.read(self.generator)
+        try:
+            self.exe.run(self.main_program,
+                         fetch_list=fetch_list,
+                         return_numpy=return_numpy)
+        except fluid.core.EOFException:
+            pass
+
+    def infer(self, fetch_list=None, return_numpy=False):
+        """网络推理"""
+        self.exe.run(self.main_program,
+                     fetch_list=fetch_list,
+                     return_numpy=return_numpy)
 
     def evaluate(self):
+        """网络评估"""
         pass
 
-    def infer(self):
-        pass
-
-    def bulletin_board(self):
+    def boarder(self):
+        """"""
         pass
 

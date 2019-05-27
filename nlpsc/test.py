@@ -37,24 +37,44 @@ import os
 
 import paddle.fluid as fluid
 from nlpsc.representation.ernie import PaddleErniePretrainedModel, ErnieClassifyTransformer
+from nlpsc.dataset import Dataset
+from nlpsc.document import Document
+
+
+# 指定数据集dataset
+dataset = Dataset(name='测试数据集')
+dataset.header = ['label', 'text_a']
+d = Document(text='我是正好洛杉矶格拉斯哥', lang='zh')
+d.label = 0
+dataset.add(d)
+
+
+# 定义一个数据transformer，用来将数据集中的数据转换成模型可计算的形式
+generator = ErnieClassifyTransformer(dataset=dataset,
+                                     vocab_path='default/ernie/vocab.txt').batch_inputs_generator(epoch=1,
+                                                                                                  shuffle=False)
 
 # 定义一个模型
 ernie_model = PaddleErniePretrainedModel()
 
-# 定义一个数据读取器
-# 由于任务的不同，数据的形式会有差别，所以这里需要灵活的可定制
-# 先定义一个数据生成器，然后将生成器传给reader创建就好
-generator = ErnieClassifyTransformer('default/ernie/vocab.txt',
-                                     label_map_config=None,
-                                     max_seq_len=512,
-                                     do_lower_case=True,
-                                     in_tokens=False,
-                                     random_seed=None).data_generator(os.path.abspath('test.tsv'), epoch=1,
-                                                                      shuffle=False)
-ernie_model.create_reader(generator)
+# 定义reader
+with ernie_model.define_reader(generator) as reader:
+    pyreader = fluid.layers.py_reader(
+        capacity=50,
+        shapes=[[-1, ernie_model.max_seq_len, 1], [-1, ernie_model.max_seq_len, 1],
+                [-1, ernie_model.max_seq_len, 1], [-1, ernie_model.max_seq_len, 1], [-1, 1],
+                [-1, 1]],
+        dtypes=['int64', 'int64', 'int64', 'float32', 'int64', 'int64'],
+        lod_levels=[0, 0, 0, 0, 0, 0],
+        name='reader',
+        use_double_buffer=True)
+
+    (src_ids, sent_ids, pos_ids, input_mask, labels, qids) = fluid.layers.read_file(pyreader)
+    reader.connect_with_model(pyreader, src_ids=src_ids, sent_ids=sent_ids, pos_ids=pos_ids,
+                              input_mask=input_mask, labels=labels, qids=qids)
 
 # 定义finetune的网络
-with ernie_model.finetune():
+with ernie_model.define_finetune():
     cls_feats = ernie_model.model.get_pooled_output()
     cls_feats = fluid.layers.dropout(
         x=cls_feats,
@@ -69,12 +89,22 @@ with ernie_model.finetune():
         bias_attr=fluid.ParamAttr(
             name="cls_out_b", initializer=fluid.initializer.Constant(0.)))
 
-print(ernie_model.main_program.to_string(True))
+# 定义loss
+with ernie_model.define_loss():
+    ce_loss, probs = fluid.layers.softmax_with_cross_entropy(
+        logits=logits, label=labels, return_softmax=True)
+    loss = fluid.layers.mean(x=ce_loss)
+
+# 定义优化函数
+with ernie_model.define_optimizer():
+    optimizer = fluid.optimizer.Adam(learning_rate=.1)
+
+# print(ernie_model.main_program.to_string(True))
 
 # 可视化当前网络 -> 方便校对,尤其是对输入输入出的描述，要清晰，易懂
 # 执行预模型相关的操作
 # 执行过程因该是一个先注册后执行的过程，这样可以分析用户想要做的事情，然后做些分析，最后展示用户想要的呈现方式
-# ernie_model.train()
+ernie_model.train(1)
 # ernie_model.infer()
 # ernie_model.evaluate()
 

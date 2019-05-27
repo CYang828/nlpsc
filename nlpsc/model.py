@@ -5,6 +5,7 @@ from functools import wraps
 
 import numpy as np
 import paddle.fluid as fluid
+from .reader import Reader
 
 
 def modelcontext(fn):
@@ -26,7 +27,7 @@ class PaddleModel(object):
             place = fluid.CUDAPlace(0)
         else:
             place = fluid.CPUPlace()
-        self._exe = fluid.Executor(place)
+        self.exe = fluid.Executor(place)
 
 
 class PaddleInferModel(PaddleModel):
@@ -70,31 +71,85 @@ class PaddlePretrainedModel(PaddleModel):
         self.init_checkpoint_path = init_checkpoint_path
         self.init_pretrained_params_path = init_pretrained_params_path
 
+        self._flag_reader = False
+        self._flag_loss = False
+        self._flag_optimizer = False
+
+    def define_reader(self, generator):
+        """定义reader"""
+        obj = self
+        self.generator = generator
+        self._flag_reader = True
+
+        class _Reader(object):
+
+            def __enter__(self):
+                fluid.program_guard(obj.main_program, obj.startup_program).__enter__()
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                obj.init_params()
+
+            @staticmethod
+            def connect_with_model(pyreader, **kwargs):
+                obj.reader = Reader(pyreader, **kwargs)
+
+        return _Reader()
+
     def init_params(self):
         """初始化参数"""
         self.init_checkpoint_path and self.load_checkpoint(init_checkpoint_path=self.init_checkpoint_path)
         (self.init_pretrained_params_path and not self.init_checkpoint_path) \
         and self.load_pretrained_params(pretrained_params_path=self.init_pretrained_params_path)
 
-    def create_model(self):
+    def define_model(self):
         """模型创建
 
         :return
             reader: 数据读取器"""
         raise NotImplementedError
 
-    def finetune(self):
+    def define_finetune(self):
+        """定义finetune网络"""
         obj = self
 
-        class Finetune(object):
+        class _Finetune(object):
             def __enter__(self):
-                obj.model = obj.create_model()
+                obj.model = obj.define_model()
                 fluid.program_guard(obj.main_program, obj.startup_program).__enter__()
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 obj.init_params()
 
-        return Finetune()
+        return _Finetune()
+
+    def define_loss(self):
+        """定义损失函数"""
+        obj = self
+        self._flag_loss = True
+
+        class _LossFunction(object):
+            def __enter__(self):
+                fluid.program_guard(obj.main_program, obj.startup_program).__enter__()
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        return _LossFunction()
+
+    def define_optimizer(self):
+        """定义优化函数"""
+        obj = self
+        self._flag_optimizer = True
+
+        class _OptimizerFunction(object):
+            def __enter__(self):
+                fluid.program_guard(obj.main_program, obj.startup_program).__enter__()
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        return _OptimizerFunction()
 
     def train(self, *args, **kwargs):
         """模型训练"""
