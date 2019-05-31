@@ -93,9 +93,9 @@ with PaddleErniePretrainedModel() as ernie_model:
             logits=logits, label=labels, return_softmax=True)
         loss = fluid.layers.mean(x=ce_loss)
 
-        # 定义优化函数
-        with ernie_model.define_optimizer():
-            optimizer = fluid.optimizer.Adam(learning_rate=.1)
+    # 定义优化函数
+    with ernie_model.define_optimizer():
+        optimizer = fluid.optimizer.Adam(learning_rate=.1)
 
         ernie_model.train(epoch=2)
 ```
