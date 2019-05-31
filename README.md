@@ -19,7 +19,7 @@
 from nlpsc.shortcut import NLPShortcut
 
 
-with NLPShortcut(name='数学语料库') as ns:
+with NLPShortcut(name='测试语料库') as ns:
     ns.load_corpus_from_file('test_data/') \
         .iter_clean() \
         .iter_tokenize(tokenizer='lac', userdict='math-chinese.txt') \
