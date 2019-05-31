@@ -30,6 +30,8 @@ for document in ns.get_dataset().iter():
     print(document)
 ```
 
+更多数据集处理流程相关请查看 [数据集处理流程](nlpsc/test/test_process_flow.py)
+
 
 ### 深度学习模型相关
 模型finetune
