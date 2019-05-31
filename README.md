@@ -8,7 +8,7 @@
 目前深度学习框架选用的是[Paddle](https://github.com/PaddlePaddle/Paddle)和[tensorflow](https://github.com/tensorflow/tensorflow)
 
 ## 笔记
-这里是一些学习过程中的笔记。
+这里是一些学习笔记。
 
 [A Brief Note of Representation](notes/A%20Brief%20Note%20of%20Representation.md)
 
