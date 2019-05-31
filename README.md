@@ -14,26 +14,22 @@
 
 ## 实战
 ### 文档处理
+可以按照自己需求，随意的定制文档处理流程，快速高效的完成数据处理。
 ```python
 from nlpsc.shortcut import NLPShortcut
 
 
-class TestFlow(object):
+with NLPShortcut(name='数学语料库') as ns:
+    ns.load_corpus_from_file('test_data/') \
+        .iter_clean() \
+        .iter_tokenize(tokenizer='lac', userdict='math-chinese.txt') \
+        .iter_stopword() \
+        .iter_dump('output/')
 
-    def test_synthesis_flow(self):
-        from nlpsc.document import Document
-
-        with NLPShortcut(name='数学语料库') as ns:
-            ns.load_corpus_from_file('test_data/') \
-                .iter_clean() \
-                .iter_tokenize(tokenizer='lac', userdict='math-chinese.txt') \
-                .iter_stopword() \
-                .iter_dump('output/')
-
-        for document in ns.get_dataset().iter():
-            assert isinstance(document, Document)
+for document in ns.get_dataset().iter():
+    print(document)
 ```
-可以按照自己需求，随意的定制你的文档处理流程。
+
 
 ### 深度学习模型相关
 模型finetune
