@@ -33,7 +33,7 @@ class TestFlow(object):
         for document in ns.get_dataset().iter():
             assert isinstance(document, Document)
 ```
-你可以按照自己需求，随意的定制你的文档处理流程。
+可以按照自己需求，随意的定制你的文档处理流程。
 
 ### 深度学习模型相关
 模型finetune
