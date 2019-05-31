@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 
-from .vocabulary import Vocabulary
+from .vocabulary import Vocabulary, get_default_vocabulary
 
 
 class Transformer(metaclass=abc.ABCMeta):
@@ -28,9 +28,8 @@ class Transformer(metaclass=abc.ABCMeta):
         if dataset:
             self.size = dataset.size
 
-        if vocab_path:
-            self._vocab_path = vocab_path
-            self.create_vocab()
+        self._vocab_path = vocab_path
+        self.create_vocab()
 
         self._do_lower_case = do_lower_case
         self.in_tokens = in_tokens
@@ -86,7 +85,7 @@ class Transformer(metaclass=abc.ABCMeta):
             if self._vocab_path:
                 self.vocab.load_vocab(self._vocab_path)
             else:
-                self.vocab.auto_from_dataset(self.dataset)
+                self.vocab = get_default_vocabulary()
 
     def _batch(self, documents, batch_size):
         if self.in_tokens:

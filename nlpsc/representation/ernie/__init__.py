@@ -2,7 +2,6 @@
 from abc import ABC
 
 import numpy as np
-import paddle.fluid as fluid
 
 from ...error import NLPSCError
 from ...util.file import get_default_path

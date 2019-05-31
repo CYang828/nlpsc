@@ -1,5 +1,6 @@
 # coding=utf-8
 
+from ..vocabulary import get_default_vocabulary
 from ..util.python import convert_to_unicode
 from ..preprocessing.text import whitespace_tokenize, clean_text, \
     tokenize_chinese_chars, run_strip_accents, run_split_on_punc, \
@@ -9,7 +10,8 @@ from ..preprocessing.text import whitespace_tokenize, clean_text, \
 class FullTokenizer(object):
     """Runs end-to-end tokenziation."""
 
-    def __init__(self, vocab, do_lower_case=True):
+    def __init__(self, vocab=None, do_lower_case=True):
+        vocab = vocab if vocab else get_default_vocabulary()
         self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab)
 
@@ -21,11 +23,15 @@ class FullTokenizer(object):
 
         return split_tokens
 
+    def cut(self, text):
+        return self.tokenize(text)
+
 
 class CharTokenizer(object):
     """Runs end-to-end tokenziation."""
 
-    def __init__(self, vocab):
+    def __init__(self, vocab=None):
+        vocab = vocab if vocab else get_default_vocabulary()
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab)
 
     def tokenize(self, text):
@@ -35,6 +41,9 @@ class CharTokenizer(object):
                 split_tokens.append(sub_token)
 
         return split_tokens
+
+    def cut(self, text):
+        return self.tokenize(text)
 
 
 class BasicTokenizer(object):

@@ -2,6 +2,7 @@
 
 import collections
 
+from .util.file import get_default_path
 from .util.python import convert_to_unicode
 
 
@@ -53,4 +54,5 @@ class Vocabulary(object):
             yield k, v
 
 
-
+def get_default_vocabulary():
+    return Vocabulary().load_vocab(get_default_path('ernie/vocab.txt'))

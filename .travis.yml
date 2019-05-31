@@ -1,0 +1,13 @@
+language: python
+sudo: required
+cache: pip
+python:
+  - '3.6'
+  - '3.7'
+os:
+  - 'linux'
+  - 'osx'
+script:
+  - python setup.py install
+  - pytest
+
