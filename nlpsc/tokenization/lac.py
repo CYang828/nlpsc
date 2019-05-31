@@ -36,13 +36,15 @@ class PaddleLACInferModel(PaddleInferModel):
         self.load_inference(pretrained_path)
 
     def _load_dataset(self):
-        id2word_dict = dict([(str(word_id), word) for word, word_id in self._reader.vocab.items()])
-        id2label_dict = dict([(str(label_id), label) for label, label_id in self._reader.label_map.items()])
+        id2word_dict = dict([(str(word_id), word) for word, word_id in self.transformer.vocab.items()])
+        id2label_dict = dict([(str(label_id), label) for label, label_id in self.transformer.label_map.items()])
         Dataset = namedtuple("Dataset", ["id2word_dict", "id2label_dict"])
         self._dataset = Dataset(id2word_dict, id2label_dict)
 
-    def infer(self, texts, segment=False):
+    def infer(self, text, segment=False):
         """推断text的成分
+
+        infer一次只能推到一个语句
 
         :argument
             texts: 文本列表
@@ -50,25 +52,22 @@ class PaddleLACInferModel(PaddleInferModel):
             results
         """
 
-        from ..dataset import Dataset
         from ..document import Document
-        dataset = Dataset()
-        for text in texts:
-            dataset.add(Document(text))
-        self.transformer.dataset = dataset
-        erine_input = self.transformer.example2input(texts)
-        words, crf_decode = self._exe.run(self._inference_program,
-                                          feed={self._feed_target_names[0]: erine_input[0],
-                                                self._feed_target_names[1]: erine_input[1],
-                                                self._feed_target_names[2]: erine_input[2],
-                                                self._feed_target_names[3]: erine_input[3],
-                                                self._feed_target_names[4]: erine_input[5]},
-                                          fetch_list=self._fetch_targets,
-                                          return_numpy=False)
+
+        document = Document(text)
+        erine_input = self.transformer.document2input(document)
+        words, crf_decode = self.exe.run(self._inference_program,
+                                         feed={self._feed_target_names[0]: erine_input[0],
+                                               self._feed_target_names[1]: erine_input[1],
+                                               self._feed_target_names[2]: erine_input[2],
+                                               self._feed_target_names[3]: erine_input[3],
+                                               self._feed_target_names[4]: erine_input[5]},
+                                         fetch_list=self._fetch_targets,
+                                         return_numpy=False)
         results = self._parse_result(words, crf_decode, self._dataset)
 
         if segment:
-            return self.segment(results)
+            return list(self.segment(results))[0]
         else:
             return results
 
@@ -124,5 +123,9 @@ class PaddleLACInferModel(PaddleInferModel):
 
         如果文本超过max_seq_len, 文本会被切分成多段文本进行分词"""
 
-        texts = split_text(text, self._max_seq_len)
-        return list(chain.from_iterable(list(self.infer(texts, segment=True))))
+        sentences = split_text(text, self._max_seq_len)
+        infer_list = []
+        for sentence in sentences:
+            infer_ret = self.infer(sentence, segment=True)
+            infer_list.append(infer_ret)
+        return list(chain.from_iterable(infer_list))

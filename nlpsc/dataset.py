@@ -78,25 +78,25 @@ class Dataset(NLPShortcutCore):
 
     @cpu
     @producer('document_paragraph')
-    def __iter_paragraph(self) -> Dataset:
+    def lazy_iter_paragraph(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer('document_sentence')
-    def __iter_sentence(self) -> Dataset:
+    def lazy_iter_sentence(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer('document_word')
-    def __iter_word(self) -> Dataset:
+    def lazy_iter_word(self) -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name())
         return self
 
     @cpu
     @producer(topic='document_clean')
-    def __iter_clean(self) -> Dataset:
+    def lazy_iter_clean(self) -> Dataset:
         for document in self.consume():
             self.produce(document.clean)
             self.add(document)
@@ -105,24 +105,24 @@ class Dataset(NLPShortcutCore):
 
     @cpu
     @producer('document_preprocess')
-    def __iter_preprocess(self, fn) -> Dataset:
+    def lazy_iter_preprocess(self, fn) -> Dataset:
 
         self.iter_process(self.documents, get_runtime_function_name(), fn)
         return self
 
     @cpu
     @producer(topic='document_tokenize')
-    def __iter_tokenize(self, tokenizer=None, userdict=None) -> Dataset:
+    def lazy_iter_tokenize(self, tokenizer=None, userdict=None) -> Dataset:
         print('start token')
         for document in self.consume():
-            self.produce(document.tokenize, tokenizer=tokenizer, userdict=userdict)
+            self.produce(document.tokenize, tokenizer_opt=tokenizer, userdict=userdict)
             self.add(document)
         print('end token')
         return self
 
     @cpu
     @producer(topic='document_stopword')
-    def __iter_stopword(self, stopwordict=None) -> Dataset:
+    def lazy_iter_stopword(self, stopwordict=None) -> Dataset:
         print('document_stopword')
         for document in self.consume():
             self.produce(document.stopword, stopwordict=stopwordict)
@@ -132,7 +132,7 @@ class Dataset(NLPShortcutCore):
 
     @cpu
     @producer(topic='document_represent')
-    def __iter_represent(self) -> Dataset:
+    def lazy_iter_represent(self) -> Dataset:
         for document in self.consume():
             self.produce(document.represent)
             self.add(document)
@@ -140,15 +140,15 @@ class Dataset(NLPShortcutCore):
 
     @cpu
     @producer('document_literal')
-    def __iter_literal(self, word_delimiter=' ') -> Dataset:
+    def lazy_iter_literal(self, word_delimiter=' ') -> Dataset:
         self.iter_process(self.documents, get_runtime_function_name(),
                           word_delimiter=word_delimiter)
         return self
 
     @aio
     @producer('document_dump')
-    def __iter_dump(self, outdir, header=None, is_structured=False, prefix="dump", suffix="nlpsc",
-                    paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' ') -> Dataset:
+    def lazy_iter_dump(self, outdir, header=None, is_structured=False, prefix="dump", suffix="nlpsc",
+                       paragraph_delimiter='</p>', sentence_delimiter='</s>', word_delimiter=' ') -> Dataset:
 
         if header:
             self.set_header(header)

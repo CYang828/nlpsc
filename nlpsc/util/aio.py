@@ -4,7 +4,9 @@ import time
 import asyncio
 from asyncio import QueueEmpty
 
-from nlpsc.util.thread import ThreadWrapper
+from .thread import ThreadWrapper
+from ..gl import TIME_FAST_LOOP_TIMEOUT_SECOND
+
 
 
 class AIOTaskWrapper(object):
@@ -49,13 +51,13 @@ class AIOPoolWrapper(object):
             try:
                 tp, task = AIOPoolWrapper.queue.get_nowait()
             except QueueEmpty:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(TIME_FAST_LOOP_TIMEOUT_SECOND)
                 continue
 
             if tp == 'task':
                 r = await task()
                 self.queue.task_done()
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(TIME_FAST_LOOP_TIMEOUT_SECOND)
                 return r
 
     @staticmethod

@@ -48,5 +48,9 @@ class Vocabulary(object):
             output.append(self.inv_vocab[i])
         return output
 
+    def items(self):
+        for k, v in self.vocab.items():
+            yield k, v
+
 
 

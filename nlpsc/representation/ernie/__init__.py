@@ -1,9 +1,9 @@
 # encoding:utf-8
+from abc import ABC
 
 import numpy as np
 import paddle.fluid as fluid
 
-from ...reader import Reader
 from ...error import NLPSCError
 from ...util.file import get_default_path
 from .ernie import ErnieModel, ErnieConfig
@@ -38,15 +38,15 @@ class PaddleErnieInferModel(PaddleInferModel):
             results
         """
 
-        erine_input = self._reader.convert_example_to_erine_input(texts)
-        cls_emb, unpad_top_layer_emb = self._exe.run(self._inference_program,
-                                                     feed={self._feed_target_names[0]: erine_input[0],
-                                                           self._feed_target_names[1]: erine_input[1],
-                                                           self._feed_target_names[2]: erine_input[2],
-                                                           self._feed_target_names[3]: erine_input[3],
-                                                           self._feed_target_names[4]: erine_input[4]},
-                                                     fetch_list=self._fetch_targets,
-                                                     return_numpy=False)
+        erine_input = self._reader.document2input(texts)
+        cls_emb, unpad_top_layer_emb = self.exe.run(self._inference_program,
+                                                    feed={self._feed_target_names[0]: erine_input[0],
+                                                          self._feed_target_names[1]: erine_input[1],
+                                                          self._feed_target_names[2]: erine_input[2],
+                                                          self._feed_target_names[3]: erine_input[3],
+                                                          self._feed_target_names[4]: erine_input[4]},
+                                                    fetch_list=self._fetch_targets,
+                                                    return_numpy=False)
         return np.array(cls_emb), np.array(unpad_top_layer_emb)
 
     def token_embedding(self, text):
@@ -66,7 +66,7 @@ class PaddleErnieInferModel(PaddleInferModel):
         return self.infer(texts)[0]
 
 
-class PaddleErniePretrainedModel(PaddlePretrainedModel):
+class PaddleErniePretrainedModel(PaddlePretrainedModel, ABC):
     """Ernie预训练模型"""
 
     def __init__(self, use_gpu=False, use_fp16=False, ernie_config_path=None,
@@ -85,6 +85,7 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
             raise NLPSCError
 
         ernie_config = ErnieConfig(self.ernie_config_path)
+        ernie_config.print_config()
         ernie_model = ErnieModel(
             src_ids=self.reader.src_ids,
             position_ids=self.reader.pos_ids,
@@ -94,27 +95,8 @@ class PaddleErniePretrainedModel(PaddlePretrainedModel):
             use_fp16=self.use_fp16)
         return ernie_model
 
-    def train(self, epoch, fetch_list=None, return_numpy=False, lr=None, save_inference=False, save_checkpoint=False):
-        """网络训练"""
-        self.reader.read(self.generator)
-        try:
-            self.exe.run(self.main_program,
-                         fetch_list=fetch_list,
-                         return_numpy=return_numpy)
-        except fluid.core.EOFException:
-            pass
-
-    def infer(self, fetch_list=None, return_numpy=False):
-        """网络推理"""
-        self.exe.run(self.main_program,
-                     fetch_list=fetch_list,
-                     return_numpy=return_numpy)
-
-    def evaluate(self):
+    def __evaluate(self):
         """网络评估"""
         pass
 
-    def boarder(self):
-        """"""
-        pass
 

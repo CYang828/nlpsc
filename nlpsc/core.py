@@ -147,7 +147,6 @@ def cpu(fn):
         """
 
         DecoCpuRegister.register(obj.__class__.__name__, fn.__name__)
-        print(obj.__class__.__name__, fn.__name__)
         # fork进程时要知道当前内存状态,
         # 可以使用dir()查看当前内存中间中都import了哪些包
         # 初始化进程池，进程个数为cpu个数
@@ -180,7 +179,7 @@ class producer(object):
             _queue = self._queues[topic]
         else:
             _manager = Manager()
-            _queue = _manager.JoinableQueue(maxsize)
+            _queue = _manager.Queue(maxsize)
             self._queues[topic] = _queue
         self.queue = _queue
 
@@ -321,12 +320,14 @@ class FuncBridge(object):
         self._fn_args = ()
         self._fn_kwargs = {}
         self._fn_desc = fn_desc if fn_desc else '{} processing'.format(self._fn_name)
-        fn_return_type = getattr(self._calling, self._fn_name).__annotations__['return']
+        fn_return_type = getattr(self._calling, self._fn_name).__annotations__.get('return')
         fn_return_type_name = fn_return_type.__class__.__name__
 
+        self._fn_return_obj = None
         if fn_return_type_name not in self.unique_obj_cache.keys():
-            self._fn_return_obj = fn_return_type()
-            self.unique_obj_cache[fn_return_type_name] = self._fn_return_obj
+            if fn_return_type:
+                self._fn_return_obj = fn_return_type()
+                self.unique_obj_cache[fn_return_type_name] = self._fn_return_obj
         else:
             self._fn_return_obj = self.unique_obj_cache[fn_return_type_name]
 
@@ -340,8 +341,11 @@ class FuncBridge(object):
     def __str__(self):
         return '<FuncBridge {} {} {} {}>'.format(self._calling, self._fn_name, self._fn_args, self._fn_kwargs)
 
-    def call(self):
-        return getattr(self._calling, self._fn_name)(self, *self._fn_args, **self._fn_kwargs)
+    def call(self, add_bridge=True):
+        if add_bridge:
+            return getattr(self._calling, self._fn_name)(self, *self._fn_args, **self._fn_kwargs)
+        else:
+            return getattr(self._calling, self._fn_name)(*self._fn_args, **self._fn_kwargs)
 
     @property
     def return_obj(self):
@@ -364,10 +368,10 @@ class FuncBridge(object):
         self._waiting_thread = thread
 
 
-def _sugar_lazy_call(cls_name, fn_name):
+def _sugar_lazy_call(fn_name):
     """懒加载方法转调用规则"""
 
-    return '_{}__{}'.format(cls_name, fn_name)
+    return 'lazy_{}'.format(fn_name)
 
 
 def _sugar_magic_call(cls_name, fn_name):
@@ -403,7 +407,7 @@ def callable_register(fn):
                 return getattr(obj, real_fn_name)()
             else:
                 # 懒加载执行的方法
-                real_fn_name = _sugar_lazy_call(obj.__class__.__name__, fn_name)
+                real_fn_name = _sugar_lazy_call(fn_name)
                 if is_function_valid(obj, real_fn_name):
                     bridge = FuncBridge(obj, real_fn_name)
                     obj.add_bridge(bridge)
@@ -457,8 +461,13 @@ class NLPShortcutCore(object):
     def __getattr__(self, fn):
         return fn
 
-    def deepdive(self, obj):
-        """深入查看当前的调用链，返回的调用链都是bridge"""
+    def deepdive(self, obj=None):
+        """深入查看当前的调用链，返回的调用链都是bridge
+
+        如果obj为空，则从当前对象开始遍历"""
+
+        if not obj:
+            obj = self
 
         if isinstance(obj, NLPShortcutCore):
             for bridge in obj.call_stack:

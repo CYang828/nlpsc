@@ -42,4 +42,9 @@ class Tokenization(object):
         return self._tokenizer.cut(literal)
 
 
+def get_tokenizer():
+    tokenizer = Tokenization()
+    return tokenizer
+
+
 

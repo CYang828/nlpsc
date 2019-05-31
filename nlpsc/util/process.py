@@ -7,11 +7,13 @@ import time
 from queue import Empty
 from multiprocessing import Process, cpu_count, JoinableQueue, Event, Manager
 
+from ..gl import TIME_FAST_LOOP_TIMEOUT_SECOND
+
 
 class ProcessTaskWrapper(object):
     """进程池处理任务使用的包装器"""
 
-    def __init__(self, queue, task, args=(), kwargs={}):
+    def __init__(self, queue, task, args=(), kwargs=None):
         # 结果存储队列
         self._queue = queue
         self._task = task
@@ -38,7 +40,7 @@ class ProcessWrapper(Process):
     def run(self):
         while not self.proceed.is_set():
             try:
-                tp, task = self.queue.get(timeout=0.1)
+                tp, task = self.queue.get(timeout=TIME_FAST_LOOP_TIMEOUT_SECOND)
                 print('接收任务')
             except Empty:
                 continue

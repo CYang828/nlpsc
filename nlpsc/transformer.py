@@ -101,12 +101,14 @@ class Transformer(metaclass=abc.ABCMeta):
                 else:
                     batch_documents.append(document)
         else:
-            batch = len(documents)//batch_size + 1
+            batch = len(documents)//batch_size
+            remain = len(documents) % batch_size
+            batch = batch+1 if remain else batch
             for i in range(batch):
-                batch_documents = documents[i*i: batch_size*(i+1)]
+                batch_documents = documents[batch_size*i: batch_size*(i+1)]
                 batch_examples = map(self.document2example, batch_documents)
                 batch_inputs = map(self.example2input, batch_examples)
-                yield batch_inputs
+                yield list(batch_inputs)
 
     def _epoch(self, n=1):
         documents = self.dataset.documents * n

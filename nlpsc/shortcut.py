@@ -5,7 +5,7 @@ import time
 
 from .dataset import Dataset
 from .util.file import get_files
-from .document import file2document
+from .document import file2document, Document
 from .util.aio import AIOPoolWrapper
 from .util.process import ProcessPoolWrapper
 from .core import NLPShortcutCore, producer, aio
@@ -55,7 +55,7 @@ class NLPShortcut(NLPShortcutCore):
     def __init__(self, name=None):
         super(NLPShortcut, self).__init__()
         self.name = name
-        self._corpus = None
+        self._dataset = None
 
     def __enter__(self):
         return self
@@ -75,8 +75,8 @@ class NLPShortcut(NLPShortcutCore):
                 r = bridge.call()
                 if isinstance(r, (ProcessPoolWrapper, AIOPoolWrapper)):
                     pools.append(r)
-                self._corpus = bridge.return_obj
-                self._corpus.name = self.name
+                self._dataset = bridge.return_obj
+                self._dataset.name = self.name
 
             # 等待cpu和io的pool中的任务完成
             for pool in pools:
@@ -91,7 +91,7 @@ class NLPShortcut(NLPShortcutCore):
 
     @aio
     @producer(topic="load_corpus_from_file")
-    def __load_corpus_from_file(self, fin, lang='zh', fn=None) -> Dataset:
+    def lazy_load_corpus_from_file(self, fin, lang='zh', fn=None) -> Dataset:
         """从文件或文件夹中加载语料库
 
         :argument
@@ -113,7 +113,7 @@ class NLPShortcut(NLPShortcutCore):
 
     @aio
     @producer(topic="load_corpus_from_tsv")
-    def __load_corpus_from_tsv(self, fin, lang='zh', quotechar=None):
+    def lazy_load_corpus_from_tsv(self, fin, lang='zh', quotechar=None):
         """Reads a tab separated value file."""
         with open(fin, "r") as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
@@ -129,7 +129,7 @@ class NLPShortcut(NLPShortcutCore):
 
     @aio
     @producer(topic='load_corpus_from_dump')
-    def __load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Dataset:
+    def lazy_load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Dataset:
         """从dump的文件中加载语料库
 
         :argument
@@ -142,9 +142,9 @@ class NLPShortcut(NLPShortcutCore):
 
         print('load dump file finished, get a corpus!')
 
-    def get_corpus(self):
+    def get_dataset(self):
         """获取语料库"""
-        return self._corpus
+        return self._dataset
 
     def serving(self):
         """提供对外的http服务，在线进行语料库的标注等工作"""

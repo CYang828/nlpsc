@@ -126,7 +126,6 @@ class ErnieBaseTransformer(Transformer):
 
         def produce():
             for batch_records in self._batch_inputs_generator(batch_size, epoch, shuffle):
-                print(batch_records)
                 yield self._pad_batch_records(batch_records)
         return produce
 
@@ -156,13 +155,11 @@ class ErnieClassifyTransformer(ErnieBaseTransformer):
     """ClassifyReader"""
 
     def document2example(self, document):
-        if self.dataset:
+        if document.label:
             Example = namedtuple('Example', self.dataset.header)
-            print(Example(text_a=document.text, label=document.label))
             return Example(text_a=document.text, label=document.label)
         else:
             Example = namedtuple('Example', ['text_a', 'label'])
-            print(Example(text_a=document.text, label=0))
             return Example(text_a=document.text, label=0)
 
     def _pad_batch_records(self, batch_records):
@@ -171,7 +168,7 @@ class ErnieClassifyTransformer(ErnieBaseTransformer):
         batch_position_ids = [record.position_ids for record in batch_records]
         batch_labels = [record.label_id for record in batch_records]
         batch_labels = np.array(batch_labels).astype("int64").reshape([-1, 1])
-        print(batch_token_ids, batch_position_ids)
+
         # padding
         padded_token_ids, input_mask, seq_lens = pad_batch_data(
             batch_token_ids, pad_idx=self.pad_id, return_input_mask=True, return_seq_lens=True)
@@ -217,7 +214,6 @@ class SequenceLabelTransformer(ErnieBaseTransformer):
         return return_list
 
     def _reseg_token_label(self, tokens, labels):
-        assert len(tokens) == len(labels)
         ret_tokens = []
         ret_labels = []
         for token, label in zip(tokens, labels):

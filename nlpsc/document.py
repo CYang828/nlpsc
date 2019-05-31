@@ -5,7 +5,7 @@ from inspect import isfunction
 
 from .error import NLPSCError
 from .util.tool import uniqueid
-from .tokenization import Tokenization
+from .tokenization import get_tokenizer
 from .util.file import aio_read_file
 from .preprocessing.text import clean_text
 from .util.file import aio_write_file
@@ -34,11 +34,9 @@ class Document(object):
     """文章对象"""
 
     support_langs = ('zh', 'en')
-    # _tokenizer = Tokenization()
-    # _represent = Representation()
     _stopwordict = []
 
-    def __init__(self, text, lang, path=None, name=None, dataset=None):
+    def __init__(self, text, lang='zh', path=None, name=None, dataset=None):
         if lang not in self.support_langs:
             print('langs {} can be supported now, please check it'.format(self.support_langs))
             raise NLPSCError
@@ -51,14 +49,12 @@ class Document(object):
         # 文档路径
         self.path = path
         # 文档中保存的字面量
-        self.text = text.strip()
+        self.ori = self.text = text.strip()
         # 文档语言
         self.lang = lang
         # 调用方法栈
         self._call_stack = []
 
-        # 处理后的中间文本结果
-        self._proceed = ''
         # 段落
         self._paragraphs = []
         # 句子
@@ -75,7 +71,7 @@ class Document(object):
         if self._words:
             show_thing = '\t' + ' | '.join(map(str, self._words[:10]))
         else:
-            show_thing = self._proceed
+            show_thing = self.text
 
         return '<nlpsc.document.Document -> {} ({} ......) >'.format(self.name, show_thing[:100])
 
@@ -102,7 +98,7 @@ class Document(object):
 
     def clean(self):
         """文档字面量清洗"""
-        self._proceed = clean_text(self.text)
+        self.text = clean_text(self.text)
         return self
 
     def preprocess(self, fn):
@@ -114,13 +110,13 @@ class Document(object):
         """
 
         if isfunction(fn):
-            self._proceed = fn(self.text)
+            self.text = fn(self.text)
             return self
         else:
             print("preprocess argument is a function, please check it!")
             raise NLPSCError
 
-    def tokenize(self, tokenizer=None, userdict=None):
+    def tokenize(self, tokenizer_opt=None, userdict=None):
         """分词
 
         :argument
@@ -135,8 +131,9 @@ class Document(object):
                 userdict = guess_path
             print('load tokenize userdict: {}'.format(userdict))
 
-        self._tokenizer.configuration(tokenizer=tokenizer, userdict=userdict)
-        self._words = list2words(list(self._tokenizer.cut(self.text)))
+        tokenizer = get_tokenizer()
+        tokenizer.configuration(tokenizer=tokenizer_opt, userdict=userdict)
+        self._words = list2words(list(tokenizer.cut(self.text)))
         return self
 
     def stopword(self, stopwordict=None):
@@ -179,7 +176,7 @@ class Document(object):
         if self._words:
             literal_text = word_delimiter.join([word.text for word in self._words])
         else:
-            literal_text = self._proceed
+            literal_text = self.text
         return literal_text
 
     async def dump(self, output_dir, filename, is_structured=False, prefix="dump", suffix="nlpsc",
@@ -205,6 +202,7 @@ class Document(object):
             dump_text = '{}||{}\n'.format(self.path if self.path else '', dump_text)
             dump_path = await aio_write_file(output_dir, filename, dump_text, pattern='a+')
             print('{:60} dump to {}'.format(self.__short__(), dump_path))
+        return self
 
 
 class Paragraph(object):
