@@ -12,3 +12,4 @@ nlpsc/preprocessing/__pycache__/
 nlpsc/tokenization/__pycache__/
 nlpsc/util/__pycache__/
 nlpsc/default/pretrained-models
+.pytest_cache/*

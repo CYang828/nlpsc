@@ -8,7 +8,8 @@ class Tokenization(object):
     """默认使用lac进行分词
 
     如果想使用jieba：请执行`pip install jieba`
-    如果想使用pkuseg：请执行`pip install pkuseg`"""
+    如果想使用pkuseg：请执行`pip install pkuseg`
+    """
 
     tokenizer_option = ('jieba', 'pkuseg', 'lac', 'en', 'zh_char')
 

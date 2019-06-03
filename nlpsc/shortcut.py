@@ -3,7 +3,7 @@
 import csv
 import time
 
-from .dataset import Dataset
+from .dataset import Dataset, DatasetHeader
 from .util.file import get_files
 from .document import file2document, Document
 from .util.aio import AIOPoolWrapper
@@ -90,8 +90,8 @@ class NLPShortcut(NLPShortcutCore):
             AIOPoolWrapper.stop()
 
     @aio
-    @producer(topic="load_corpus_from_file")
-    def lazy_load_corpus_from_file(self, fin, lang='zh', fn=None) -> Dataset:
+    @producer(topic="load_dataset_from_file")
+    def lazy_load_dataset_from_file(self, fin, lang='zh', fn=None, header=None) -> Dataset:
         """从文件或文件夹中加载语料库
 
         :argument
@@ -100,7 +100,11 @@ class NLPShortcut(NLPShortcutCore):
             lang:
                 语言类型 (zh, en)
             fn:
-                如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件"""
+                如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件
+            header:
+                `nlpsc.dataset.DatasetHeader` 对象"""
+
+        self._dataset.add_header(header)
 
         files = get_files(fin, fn)
         for name, path in files:
@@ -109,11 +113,11 @@ class NLPShortcut(NLPShortcutCore):
                          'r',
                          encoding='utf-8-sig',
                          lang=lang)
-        print('load files finished, get a corpus!')
+        print('load files finished, get a dataset!')
 
     @aio
-    @producer(topic="load_corpus_from_tsv")
-    def lazy_load_corpus_from_tsv(self, fin, lang='zh', quotechar=None):
+    @producer(topic="load_dataset_from_tsv")
+    def lazy_load_dataset_from_tsv(self, fin, lang='zh', quotechar=None):
         """Reads a tab separated value file."""
         with open(fin, "r") as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
@@ -128,8 +132,8 @@ class NLPShortcut(NLPShortcutCore):
             # return examples
 
     @aio
-    @producer(topic='load_corpus_from_dump')
-    def lazy_load_corpus_from_dump(self, fin, lang='zh', fn=None) -> Dataset:
+    @producer(topic='load_dataset_from_dump')
+    def lazy_load_dataset_from_dump(self, fin, lang='zh', fn=None) -> Dataset:
         """从dump的文件中加载语料库
 
         :argument
@@ -140,7 +144,7 @@ class NLPShortcut(NLPShortcutCore):
             fn:
                 如果fin是目录，会根据filter来过滤加载文件，默认加载全部文件"""
 
-        print('load dump file finished, get a corpus!')
+        print('load dump file finished, get a dataset!')
 
     def get_dataset(self):
         """获取语料库"""
