@@ -3,9 +3,11 @@
 </p>
 
 ## 介绍
-[nlpsc](https://github.com/BSlience/nlpsc) 是一个nlp初学者可以快速学习理论并实践，nlp进阶者快速验证模型的项目。
-这里有学习时的笔记、验证的代码和大家的思考，你也可以把你的文字和代码PR给我，让更多的人能在学习NLP的过程中少走弯路。
+[nlpsc](https://github.com/BSlience/nlpsc) 是一个为nlp初学者提供快速学习理论并实践，给nlp进阶者快速验证模型的项目。
+这里有学习时的笔记、验证的代码和工程中的思考，你也可以把你的文字和代码PR给我，让更多的人能在学习NLP的过程中少走弯路。
 目前深度学习框架选用的是[Paddle](https://github.com/PaddlePaddle/Paddle)和[tensorflow](https://github.com/tensorflow/tensorflow)
+
+项目有许多工作需要工作，如果你对它感兴趣，欢迎加入。具体展望在[这里](ROADMAP.md)查看。
 
 ## 笔记
 这里是一些学习笔记。
