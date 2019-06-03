@@ -34,6 +34,40 @@ for document in ns.get_dataset().iter():
 
 更多数据集处理流程相关请查看 [数据集处理流程](nlpsc/test/test_process_flow.py)
 
+### 各种nlp的工具
+
+#### 分词
+中文分词（基于ernie）
+```python
+from nlpsc.tokenization import Tokenization
+
+tokenizer = Tokenization()
+tokenizer.configuration(tokenizer='lac')
+print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
+```
+
+中文单字分割
+```python
+from nlpsc.tokenization import Tokenization
+
+tokenizer = Tokenization()
+tokenizer.configuration(tokenizer='zh_char')
+print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
+```
+
+英文单词分割
+```python
+from nlpsc.tokenization import Tokenization
+
+tokenizer = Tokenization()
+tokenizer.configuration(tokenizer='en')
+print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
+```
+
+更多分词相关请查看 [分词用例](nlpsc/test/test_tokenizer.py)
+
+#### 词向量
+
 
 ### 深度学习模型相关
 模型finetune
@@ -99,41 +133,6 @@ with PaddleErniePretrainedModel() as ernie_model:
 
         ernie_model.train(epoch=2)
 ```
-
-### 各种nlp的工具
-
-#### 分词
-中文分词（基于ernie）
-```python
-from nlpsc.tokenization import Tokenization
-
-tokenizer = Tokenization()
-tokenizer.configuration(tokenizer='lac')
-print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
-```
-
-中文单字分割
-```python
-from nlpsc.tokenization import Tokenization
-
-tokenizer = Tokenization()
-tokenizer.configuration(tokenizer='zh_char')
-print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
-```
-
-英文单词分割
-```python
-from nlpsc.tokenization import Tokenization
-
-tokenizer = Tokenization()
-tokenizer.configuration(tokenizer='en')
-print(tokenizer.cut('这是一个测试文档，文档的意义并不重要，重要的是怎么才能凑够数字'))
-```
-
-更多分词相关请查看 [分词用例](nlpsc/test/test_tokenizer.py)
-
-#### 词向量
-
 
 ## 许可
 [MIT](LICENSE.md)
