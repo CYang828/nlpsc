@@ -12,6 +12,7 @@ from .util.file import gen_filename
 from .core import NLPShortcutCore, producer, aio, cpu
 from .util.python import get_runtime_function_name
 from .util.file import aio_write_file
+from .vboard.dataset import DatasetVBoard
 
 
 def create_header(header):
@@ -271,4 +272,3 @@ class Dataset(NLPShortcutCore):
     @property
     def documents(self):
         return list(self._documents.values())
-

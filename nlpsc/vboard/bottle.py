@@ -896,11 +896,13 @@ class Bottle(object):
             Any additional keyword arguments are stored as route-specific
             configuration and passed to plugins (see :meth:`Plugin.apply`).
         """
+
         if callable(path): path, callback = None, path
         plugins = makelist(apply)
         skiplist = makelist(skip)
 
         def decorator(callback):
+
             if isinstance(callback, basestring): callback = load(callback)
             for rule in makelist(path) or yieldroutes(callback):
                 for verb in makelist(method):
@@ -3118,7 +3120,6 @@ def make_default_app_wrapper(name):
     @functools.wraps(getattr(Bottle, name))
     def wrapper(*a, **ka):
         return getattr(app(), name)(*a, **ka)
-
     return wrapper
 
 
@@ -4202,6 +4203,7 @@ def view(tpl_name, **defaults):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            print(func)
             result = func(*args, **kwargs)
             if isinstance(result, (dict, DictMixin)):
                 tplvars = defaults.copy()
