@@ -33,7 +33,7 @@ class DatasetVBoard(VBoard):
         # index = request.query.index
         #
         # # 初始化标注区
-        return template('dataset_template.html')
+        return template('dataset_template.html', markpen='highlight:yellowMarker', data='hello world')
 
     @post('/dataset/field/add')
     def add_field(self):

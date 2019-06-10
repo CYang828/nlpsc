@@ -3,45 +3,64 @@
 <head>
     <meta charset="utf-8">
     <title>dataset vboard</title>
-    <script src="https://cdn.ckeditor.com/ckeditor5/12.1.0/balloon-block/ckeditor.js"></script>
-    <!-- UIkit CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.1.5/css/uikit.min.css" />
-
-    <!-- UIkit JS -->
-    <script src="https://cdn.ckeditor.com/ckeditor5/12.1.0/balloon/ckeditor.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.1.5/js/uikit-icons.min.js"></script>
-    <style type="text/css">
-    *{
-        margin:0px;
-        padding:0px;
-    }
-
-    html, body {
-        height: 100%;
-    }
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/uikit.min.css"/>
+    <script src="js/uikit.min.js"></script>
+    <script src="js/uikit-icons.min.js"></script>
+    <style>
+        html, body {
+            max-width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
-    <div class="uk-height-1-1 uk-flex uk-padding">
-        <div class="uk-width-8-10 uk-height-1-1 uk-card uk-card-default uk-card-body" style="">
-            <div id="editor" class="uk-height-1-1">
-                <p>This is some sample content.</p>
-            </div>
+
+<div class="uk-height-1-1 uk-flex uk-padding">
+    <div class="uk-width-8-10 uk-height-1-1 uk-card uk-card-default uk-card-body">
+        <div id="editor" class="uk-height-1-1">
+            {{data}}
         </div>
     </div>
+</div>
 
-    <script>
-        BalloonEditor
-            .create( document.querySelector( '#editor' ), {
-                toolbar: {
-                    items: [
-                        'highlight:yellowMarker', 'highlight:greenMarker', 'highlight:pinkMarker',
-                    ]
-                }
-            } )
-            .catch( error => {
-                console.error( error );
-            } );
-    </script>
+<script src="js/ckeditor.js"></script>
+<script>
+    NlpscEditor.create(document.querySelector('#editor'), {
+            highlight: {
+                options: [
+                    {
+                        model: 'yellowMarker',
+                        class: 'marker-yellow',
+                        title: '是老骥伏枥上飞机',
+                        color: 'var(--ck-highlight-marker-green)',
+                        type: 'marker'
+                    },
+                    {
+                        model: 'redPen',
+                        class: 'pen-red',
+                        title: 'Red pen',
+                        color: 'var(--ck-highlight-pen-red)',
+                        type: 'pen'
+                    }
+                ]
+            },
+            toolbar: {
+                items: [
+                    '{{ markpen }}',
+                    'undo',
+                    'redo'
+                ]
+            },
+        }
+    )
+        .then(editor => {
+            window.editor = editor;
+        })
+        .catch(err => {
+            console.error(err.stack);
+        });
+</script>
+
 </body>
 </html>
